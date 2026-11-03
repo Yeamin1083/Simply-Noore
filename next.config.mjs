@@ -18,7 +18,7 @@ const nextConfig = {
     ],
   },
   basePath: basePath ? basePath : undefined,
-  assetPrefix: basePath ? `${basePath}/` : undefined,
+  assetPrefix: basePath ? basePath : undefined,
   reactStrictMode: true,
 };
 

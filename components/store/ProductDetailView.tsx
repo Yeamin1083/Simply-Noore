@@ -26,7 +26,8 @@ interface ProductDetailViewProps {
 }
 
 export function ProductDetailView({ product, fabric, bundlePiece }: ProductDetailViewProps) {
-  const { lang, addToCart, isInWishlist, toggleWishlist } = useStore();
+  const { lang, addToCart, isInWishlist, toggleWishlist, products } = useStore();
+  const liveProduct = products?.find((p) => p.slug === product.slug || p.id === product.id) || product;
 
   const [selectedVariantIdx, setSelectedVariantIdx] = useState(0);
   const [selectedSize, setSelectedSize] = useState<string>("");
@@ -36,19 +37,31 @@ export function ProductDetailView({ product, fabric, bundlePiece }: ProductDetai
   const [userHeight, setUserHeight] = useState("5'4\"");
   const [added, setAdded] = useState(false);
 
-  const activeVariant = product.variants[selectedVariantIdx] || product.variants[0];
-  const currentSize = selectedSize || activeVariant.sizes[0] || "Standard";
-  const isWished = isInWishlist(product.id);
+  const activeVariant =
+    liveProduct.variants?.[selectedVariantIdx] ||
+    liveProduct.variants?.[0] || {
+      id: "v1",
+      name: liveProduct.title,
+      colorName: "Natural",
+      colorHex: "#C57045",
+      washColor: "#F5DEC8",
+      washInk: "#1F2A23",
+      stockCount: 10,
+      sizes: ["52", "54", "56"],
+      image: "https://images.unsplash.com/photo-1585487000160-6ebcfceb0d03?q=80&w=900&auto=format&fit=crop",
+    };
+  const currentSize = selectedSize || activeVariant.sizes?.[0] || "Standard";
+  const isWished = isInWishlist(liveProduct.id);
 
   const handleAddToCart = () => {
     addToCart({
-      productId: product.id,
+      productId: liveProduct.id,
       variantId: activeVariant.id,
-      slug: product.slug,
-      title: product.title,
+      slug: liveProduct.slug,
+      title: liveProduct.title,
       colorName: activeVariant.colorName,
       size: currentSize,
-      price: product.price,
+      price: liveProduct.price,
       image: activeVariant.image,
       quantity: 1,
       customLength: isCustomLengthOpen ? customLength : undefined,
@@ -97,16 +110,14 @@ export function ProductDetailView({ product, fabric, bundlePiece }: ProductDetai
           {/* Left: 3:4 Standard Luxury Image Gallery */}
           <div className="lg:col-span-7 space-y-4">
             <div className="relative aspect-[3/4] w-full rounded-2xl overflow-hidden shadow-2xl border border-current/10 bg-surface/50">
-              <Image
+              <img
                 src={activeVariant.image}
-                alt={product.title}
-                fill
-                priority
-                className="object-cover"
+                alt={liveProduct.title}
+                className="object-cover h-full w-full"
               />
 
               {/* Anatomy Hotspots Overlay (M5, #13) */}
-              {product.hotspots?.map((hotspot) => (
+              {liveProduct.hotspots?.map((hotspot) => (
                 <div
                   key={hotspot.id}
                   className="absolute z-10 group"
@@ -127,9 +138,9 @@ export function ProductDetailView({ product, fabric, bundlePiece }: ProductDetai
             </div>
 
             {/* Micro thumbnail strip */}
-            {product.variants.length > 1 && (
+            {liveProduct.variants && liveProduct.variants.length > 1 && (
               <div className="flex gap-3">
-                {product.variants.map((v, idx) => (
+                {liveProduct.variants.map((v, idx) => (
                   <button
                     key={v.id}
                     onClick={() => setSelectedVariantIdx(idx)}
@@ -139,7 +150,7 @@ export function ProductDetailView({ product, fabric, bundlePiece }: ProductDetai
                         : "border-current/20 opacity-70 hover:opacity-100"
                     }`}
                   >
-                    <Image src={v.image} alt={v.colorName} fill className="object-cover" />
+                    <img src={v.image} alt={v.colorName} className="object-cover h-full w-full" />
                   </button>
                 ))}
               </div>

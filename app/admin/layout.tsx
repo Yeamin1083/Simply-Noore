@@ -21,6 +21,8 @@ import {
   ChevronRight,
   Bell,
   Sparkles,
+  BookOpen,
+  Tag,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 
@@ -33,7 +35,15 @@ export default function AdminLayout({
   const { theme, toggleTheme } = useStore();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const navSections = [
+  const navSections: Array<{
+    group: string;
+    items: Array<{
+      label: string;
+      href: string;
+      icon: any;
+      badge?: string;
+    }>;
+  }> = [
     {
       group: "Overview",
       items: [
@@ -41,17 +51,18 @@ export default function AdminLayout({
       ],
     },
     {
-      group: "Catalogue",
+      group: "Catalogue & Content",
       items: [
         { label: "Silhouettes & Pieces", href: "/admin?tab=products", icon: Package },
+        { label: "Journal & Editorial", href: "/admin?tab=journal", icon: BookOpen },
         { label: "Fabric Library", href: "/fabrics", icon: Layers },
       ],
     },
     {
       group: "Sales & Dispatch",
       items: [
-        { label: "Live Orders Queue", href: "/admin?tab=orders", icon: ShoppingBag, badge: "3 New" },
-        { label: "Steadfast Courier", href: "/admin?tab=shipments", icon: Truck },
+        { label: "Live Orders Queue", href: "/admin?tab=orders", icon: ShoppingBag },
+        { label: "Discount Coupons", href: "/admin?tab=coupons", icon: Tag },
       ],
     },
     {

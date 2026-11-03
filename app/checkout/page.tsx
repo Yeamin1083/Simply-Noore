@@ -7,6 +7,7 @@ import Link from "next/link";
 import { ArrowLeft, ShieldCheck, Lock, Check } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { formatBDT } from "@/lib/utils";
+import { OrderItem } from "@/lib/types";
 
 const BD_DISTRICTS = [
   "Dhaka", "Chattogram", "Sylhet", "Rajshahi", "Khulna", "Barishal", "Rangpur", "Mymensingh",
@@ -17,7 +18,7 @@ const BD_DISTRICTS = [
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { cart, cartTotal, clearCart, lang } = useStore();
+  const { cart, cartTotal, clearCart, lang, addOrder, siteSettings } = useStore();
 
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -28,11 +29,16 @@ export default function CheckoutPage() {
   const [trxId, setTrxId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const deliveryCharge = district === "Dhaka" ? 80 : 130;
+  const isFreeDelivery = cartTotal >= (siteSettings?.freeShippingThreshold || 10000);
+  const deliveryCharge = isFreeDelivery
+    ? 0
+    : district === "Dhaka"
+    ? siteSettings?.insideDhakaShipping || 80
+    : siteSettings?.outsideDhakaShipping || 130;
   const total = cartTotal + deliveryCharge;
 
   // Advance calculation if order over ৳10,000 or custom length (#22)
-  const isAdvanceRequired = total > 10000;
+  const isAdvanceRequired = total > (siteSettings?.advancePaymentRequiredThreshold || 10000);
   const advanceAmount = isAdvanceRequired ? Math.round(total * 0.25) : 0;
   const remainingCod = total - advanceAmount;
 
@@ -51,10 +57,33 @@ export default function CheckoutPage() {
     }
 
     setIsSubmitting(true);
+
+    const orderId = `SN-${Date.now().toString().slice(-6)}`;
+    const newOrder: OrderItem = {
+      id: orderId,
+      customer: fullName,
+      phone: phone,
+      district: district,
+      address: address,
+      items: cart.map((i) => `${i.title} (${i.colorName}, ${i.size}) x${i.quantity}`).join(", "),
+      total: total,
+      payment: paymentMethod === "cod" ? "COD" : paymentMethod === "bkash" ? "bKash" : "Nagad",
+      trxId: trxId || undefined,
+      senderPhone: senderNumber || undefined,
+      status: paymentMethod === "cod" ? "Processing" : "Pending",
+      date: "Just now",
+    };
+    addOrder(newOrder);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("sn_latest_order", JSON.stringify(newOrder));
+      } catch {}
+    }
+
     setTimeout(() => {
       clearCart();
       router.push("/order-success");
-    }, 1200);
+    }, 1000);
   };
 
   if (cart.length === 0) {

@@ -49,9 +49,10 @@ function CountdownTimer({ targetDate }: { targetDate: string }) {
 }
 
 export default function DropsPage() {
-  const { lang } = useStore();
+  const { lang, products } = useStore();
+  const allProducts = products && products.length > 0 ? products : PRODUCTS;
   const drop = DROPS[0];
-  const dropProducts = PRODUCTS.filter((p) => drop.productIds.includes(p.id));
+  const dropProducts = drop ? allProducts.filter((p) => drop.productIds?.includes(p.id)) : allProducts.slice(0, 4);
 
   return (
     <div className="py-10 md:py-16 px-4 md:px-8 max-w-7xl mx-auto space-y-12">

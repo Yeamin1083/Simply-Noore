@@ -13,7 +13,14 @@ interface CategoryViewProps {
 }
 
 export function CategoryView({ category, products }: CategoryViewProps) {
-  const { lang } = useStore();
+  const { lang, products: liveProducts } = useStore();
+
+  const activeProducts =
+    liveProducts && liveProducts.length > 0
+      ? liveProducts.filter((p) => p.category === category.slug)
+      : products;
+
+  const displayProducts = activeProducts.length > 0 ? activeProducts : products;
 
   return (
     <div className="py-10 md:py-16 px-4 md:px-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-300">
@@ -40,11 +47,17 @@ export function CategoryView({ category, products }: CategoryViewProps) {
       </div>
 
       {/* Standard Product Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {products.map((product) => (
-          <ProductCard key={product.id} product={product} />
-        ))}
-      </div>
+      {displayProducts.length === 0 ? (
+        <div className="py-20 text-center text-muted text-sm">
+          No silhouettes found in this category.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {displayProducts.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

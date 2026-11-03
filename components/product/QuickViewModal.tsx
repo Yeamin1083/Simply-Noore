@@ -92,10 +92,14 @@ export function QuickViewModal() {
                 aria-pressed={selectedThumb === i}
                 onClick={() => setSelectedThumb(i)}
                 aria-label={`${v} view`}
-                className="overflow-hidden rounded-lg relative"
+                className={`overflow-hidden rounded-lg relative aspect-square border transition-all ${
+                  selectedThumb === i ? "border-accent-ink ring-2 ring-accent/30" : "border-border/40 opacity-70"
+                }`}
               >
-                <div
-                  className="ph t-sage"
+                <img
+                  src={currentVariant.image}
+                  alt=""
+                  className="object-cover h-full w-full"
                   style={{
                     filter:
                       i === 1
@@ -112,7 +116,12 @@ export function QuickViewModal() {
           </div>
 
           <div className="mainph">
-            <div className="ph t-sage relative h-full w-full" id="qvMain">
+            <div className="relative h-full w-full overflow-hidden rounded-xl bg-surface-2" id="qvMain">
+              <img
+                src={currentVariant.image}
+                alt={quickViewProduct.title}
+                className="object-cover h-full w-full"
+              />
               <span className="ph-l" id="qvLbl">
                 {views[selectedThumb]} · {currentVariant.colorName}
               </span>

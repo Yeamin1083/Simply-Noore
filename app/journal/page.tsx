@@ -4,13 +4,17 @@ import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { useStore } from "@/lib/store";
 import { ARTICLES } from "@/lib/data";
 
 export default function JournalPage() {
+  const { articles } = useStore();
+  const displayArticles = articles && articles.length > 0 ? articles : ARTICLES;
+
   return (
     <div className="py-10 md:py-16 px-4 md:px-8 max-w-7xl mx-auto space-y-12">
       <div className="space-y-3 border-b border-border/30 pb-6 max-w-xl">
-        <span className="text-xs uppercase tracking-widest text-accent-ink font-semibold">
+        <span className="text-xs uppercase tracking-widest text-accent-ink font-semibold font-mono">
           ✦ Nooré Journal (#9)
         </span>
         <h1 className="font-serif text-3xl md:text-5xl font-medium text-text">
@@ -22,19 +26,21 @@ export default function JournalPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-        {ARTICLES.map((article) => (
+        {displayArticles.map((article) => (
           <article key={article.id} className="group space-y-4">
-            <Link href={`/journal/${article.slug}`} className="block relative aspect-[16/10] rounded-xl overflow-hidden border border-border/40 bg-surface-2 shadow-sm">
-              <Image
+            <Link
+              href={`/journal/${article.slug}`}
+              className="block relative aspect-[16/10] rounded-xl overflow-hidden border border-border/40 bg-surface-2 shadow-sm"
+            >
+              <img
                 src={article.image}
                 alt={article.title}
-                fill
-                className="object-cover transition-transform duration-700 ease-luxury-out group-hover:scale-105"
+                className="object-cover h-full w-full transition-transform duration-700 ease-luxury-out group-hover:scale-105"
               />
             </Link>
 
             <div className="space-y-2">
-              <span className="text-[11px] uppercase tracking-wider text-muted font-medium">
+              <span className="text-[11px] uppercase tracking-wider text-muted font-medium font-mono">
                 {article.date} • By {article.author}
               </span>
               <Link href={`/journal/${article.slug}`}>

@@ -8,8 +8,9 @@ import { PRODUCTS } from "@/lib/data";
 import { useStore } from "@/lib/store";
 
 export default function WishlistPage() {
-  const { wishlist, lang } = useStore();
-  const wishedProducts = PRODUCTS.filter((p) => wishlist.includes(p.id));
+  const { wishlist, lang, products } = useStore();
+  const allProducts = products && products.length > 0 ? products : PRODUCTS;
+  const wishedProducts = allProducts.filter((p) => wishlist.includes(p.id));
 
   return (
     <div className="py-10 md:py-16 px-4 md:px-8 max-w-7xl mx-auto space-y-8 min-h-[70vh]">

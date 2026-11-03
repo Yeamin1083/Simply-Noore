@@ -23,6 +23,8 @@ export default function CartPage() {
     updateCartQty,
     cartTotal,
     lang,
+    coupons,
+    siteSettings,
   } = useStore();
 
   const [isGift, setIsGift] = useState(false);
@@ -33,18 +35,23 @@ export default function CartPage() {
   const [copiedShare, setCopiedShare] = useState(false);
 
   const GIFT_WRAP_PRICE = 250;
-  const deliveryCharge = cartTotal >= 5000 ? 0 : 120;
+  const freeThreshold = siteSettings?.freeShippingThreshold || 10000;
+  const deliveryCharge = cartTotal >= freeThreshold ? 0 : siteSettings?.insideDhakaShipping || 80;
   const giftCharge = isGift ? GIFT_WRAP_PRICE : 0;
   const total = Math.max(0, cartTotal - couponDiscount + deliveryCharge + giftCharge);
 
   const handleApplyCoupon = (e: React.FormEvent) => {
     e.preventDefault();
-    if (couponCode.trim().toUpperCase() === "NOORE10") {
-      const discount = Math.round(cartTotal * 0.1);
+    const clean = couponCode.trim().toUpperCase();
+    const match = coupons?.find((c) => c.code.toUpperCase() === clean && c.active);
+    if (match) {
+      const discount = Math.round(cartTotal * (match.discountPercent / 100));
       setCouponDiscount(discount);
       setCouponApplied(true);
+      alert(`Coupon "${match.code}" applied! ${match.discountPercent}% discount deducted.`);
     } else {
-      alert("Invalid coupon code. Try 'NOORE10' for 10% welcome privilege.");
+      const sample = coupons?.[0]?.code || "NOORE10";
+      alert(`Invalid coupon code. Try '${sample}' for privilege discount.`);
     }
   };
 

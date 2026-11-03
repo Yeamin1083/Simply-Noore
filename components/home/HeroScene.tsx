@@ -9,12 +9,23 @@ import { useStore } from "@/lib/store";
 import { formatBDT } from "@/lib/utils";
 
 export function HeroScene() {
-  const { lang, addToCart } = useStore();
-  const heroProduct = PRODUCTS[0]; // Rawdah Draped Abaya
+  const { lang, addToCart, products } = useStore();
+  const heroProduct = products?.[0] || PRODUCTS[0];
   const [selectedVariantIdx, setSelectedVariantIdx] = useState(0);
   const [activeHotspot, setActiveHotspot] = useState<string | null>(null);
 
-  const activeVariant = heroProduct.variants[selectedVariantIdx];
+  const activeVariant =
+    heroProduct.variants?.[selectedVariantIdx] ||
+    heroProduct.variants?.[0] || {
+      id: "v1",
+      name: heroProduct.title,
+      colorName: "Natural",
+      colorHex: "#C57045",
+      washColor: "#F5DEC8",
+      washInk: "#1F2A23",
+      washGhost: "rgba(245, 222, 200, 0.4)",
+      image: "https://images.unsplash.com/photo-1585487000160-6ebcfceb0d03?q=80&w=900&auto=format&fit=crop",
+    };
 
   const handleAdd = () => {
     addToCart({
@@ -98,12 +109,10 @@ export function HeroScene() {
         {/* Center: Floating Hero Piece with Hotspots */}
         <div className="lg:col-span-7 relative flex justify-center items-center">
           <div className="relative w-full max-w-md lg:max-w-lg aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl transition-all duration-500 border border-current/10">
-            <Image
+            <img
               src={activeVariant.image}
               alt={heroProduct.title}
-              fill
-              priority
-              className="object-cover animate-float"
+              className="object-cover h-full w-full animate-float"
             />
 
             {/* M5 Piece Anatomy Hotspots */}

@@ -111,6 +111,14 @@ export function Navbar() {
         </button>
 
         <Link
+          href="/admin"
+          className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full border border-current/25 hover:bg-current/10 hidden sm:inline-flex items-center"
+          title="Open Atelier Admin Portal"
+        >
+          Admin
+        </Link>
+
+        <Link
           href="/wishlist"
           className="ib hide-sm"
           aria-label="Wishlist"

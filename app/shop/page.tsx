@@ -2,28 +2,32 @@
 
 import React, { useState } from "react";
 import { ProductCard } from "@/components/product/ProductCard";
-import { PRODUCTS, CATEGORIES } from "@/lib/data";
+import { CATEGORIES, PRODUCTS } from "@/lib/data";
 import { useStore } from "@/lib/store";
 
 export default function ShopPage() {
-  const { lang } = useStore();
+  const { lang, products } = useStore();
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("featured");
 
-  const filteredProducts = PRODUCTS.filter((p) => {
-    if (selectedCategory === "all") return true;
-    return p.category === selectedCategory;
-  }).sort((a, b) => {
-    if (sortBy === "price-low") return a.price - b.price;
-    if (sortBy === "price-high") return b.price - a.price;
-    return 0;
-  });
+  const allProducts = products && products.length > 0 ? products : PRODUCTS;
+
+  const filteredProducts = allProducts
+    .filter((p) => {
+      if (selectedCategory === "all") return true;
+      return p.category === selectedCategory;
+    })
+    .sort((a, b) => {
+      if (sortBy === "price-low") return a.price - b.price;
+      if (sortBy === "price-high") return b.price - a.price;
+      return 0;
+    });
 
   return (
     <div className="py-10 md:py-16 px-4 md:px-8 max-w-7xl mx-auto space-y-8">
       {/* Editorial Header */}
       <div className="space-y-2 border-b border-border/30 pb-6">
-        <span className="text-xs uppercase tracking-widest text-accent-ink font-semibold">
+        <span className="text-xs uppercase tracking-widest text-accent-ink font-semibold font-mono">
           {lang === "bn" ? "পোশাক সম্ভার" : "Collection"}
         </span>
         <h1 className="font-serif text-3xl md:text-5xl font-medium text-text">
@@ -48,44 +52,53 @@ export default function ShopPage() {
                 : "border-border/60 text-muted hover:text-text"
             }`}
           >
-            All Pieces ({PRODUCTS.length})
+            All Pieces ({allProducts.length})
           </button>
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setSelectedCategory(cat.slug)}
-              className={`px-4 py-1.5 rounded-full border transition-all ${
-                selectedCategory === cat.slug
-                  ? "bg-espresso text-bg dark:bg-accent dark:text-bg border-transparent font-medium"
-                  : "border-border/60 text-muted hover:text-text"
-              }`}
-            >
-              {lang === "bn" ? cat.nameBn : cat.name}
-            </button>
-          ))}
+          {CATEGORIES.map((cat) => {
+            const count = allProducts.filter((p) => p.category === cat.slug).length;
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setSelectedCategory(cat.slug)}
+                className={`px-4 py-1.5 rounded-full border transition-all ${
+                  selectedCategory === cat.slug
+                    ? "bg-espresso text-bg dark:bg-accent dark:text-bg border-transparent font-medium"
+                    : "border-border/60 text-muted hover:text-text"
+                }`}
+              >
+                {lang === "bn" ? cat.nameBn : cat.name} ({count})
+              </button>
+            );
+          })}
         </div>
 
-        {/* Sort */}
+        {/* Sort Options */}
         <div className="flex items-center gap-2">
-          <span className="text-muted">Sort:</span>
+          <span className="text-muted text-[11px] uppercase tracking-wider">Sort:</span>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
-            className="bg-surface border border-border/60 rounded-lg px-3 py-1.5 text-text focus:outline-none focus:ring-1 focus:ring-accent"
+            className="bg-surface border border-border rounded-lg px-3 py-1.5 text-xs text-text focus:outline-none"
           >
-            <option value="featured">Curated</option>
+            <option value="featured">Editorial Featured</option>
             <option value="price-low">Price: Low to High</option>
             <option value="price-high">Price: High to Low</option>
           </select>
         </div>
       </div>
 
-      {/* Standard Format Product Showcase Grid (3:4 luxury rectangular boxes) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {filteredProducts.map((product) => (
-          <ProductCard key={product.id} product={product} />
-        ))}
-      </div>
+      {/* Product Grid */}
+      {filteredProducts.length === 0 ? (
+        <div className="py-20 text-center text-muted text-sm">
+          No silhouettes available in this category yet.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {filteredProducts.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

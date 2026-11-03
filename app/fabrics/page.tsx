@@ -5,8 +5,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { FABRICS, PRODUCTS } from "@/lib/data";
+import { useStore } from "@/lib/store";
 
 export default function FabricsPage() {
+  const { products } = useStore();
+  const allProducts = products && products.length > 0 ? products : PRODUCTS;
+
   return (
     <div className="py-10 md:py-16 px-4 md:px-8 max-w-7xl mx-auto space-y-12">
       <div className="space-y-3 border-b border-border/30 pb-6 max-w-2xl">
@@ -23,7 +27,7 @@ export default function FabricsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {FABRICS.map((fabric) => {
-          const matchingProducts = PRODUCTS.filter((p) => p.fabricId === fabric.id);
+          const matchingProducts = allProducts.filter((p) => p.fabricId === fabric.id || p.fabricName?.toLowerCase().includes(fabric.name.toLowerCase()));
           return (
             <div
               key={fabric.id}

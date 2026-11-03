@@ -9,7 +9,9 @@ import { useStore } from "@/lib/store";
 import { formatBDT } from "@/lib/utils";
 
 export default function StyleFinderPage() {
-  const { lang, addToCart } = useStore();
+  const { lang, addToCart, products } = useStore();
+  const allProducts = products && products.length > 0 ? products : PRODUCTS;
+
   const [step, setStep] = useState(0);
   const [occasion, setOccasion] = useState("Eid");
   const [aesthetic, setAesthetic] = useState("Minimal");
@@ -19,24 +21,26 @@ export default function StyleFinderPage() {
   const [addedAll, setAddedAll] = useState(false);
 
   // Result items for the 3-piece edit
-  const statementPiece = PRODUCTS[0]; // Rawdah Abaya
-  const matchingPiece = PRODUCTS[1];  // Layla Ensemble
-  const accentPiece = PRODUCTS[2];    // Safia Corset
+  const statementPiece = allProducts[0] || PRODUCTS[0];
+  const matchingPiece = allProducts[1] || allProducts[0] || PRODUCTS[0];
+  const accentPiece = allProducts[2] || allProducts[0] || PRODUCTS[0];
 
   const totalEditPrice =
-    statementPiece.price + matchingPiece.price + accentPiece.price;
+    (statementPiece?.price || 0) + (matchingPiece?.price || 0) + (accentPiece?.price || 0);
 
   const handleAddAll = () => {
-    [statementPiece, matchingPiece, accentPiece].forEach((p) => {
+    [statementPiece, matchingPiece, accentPiece].filter(Boolean).forEach((p) => {
+      const v = p.variants?.[0];
+      if (!v) return;
       addToCart({
         productId: p.id,
-        variantId: p.variants[0].id,
+        variantId: v.id,
         slug: p.slug,
         title: p.title,
-        colorName: p.variants[0].colorName,
-        size: p.variants[0].sizes[0] || "Standard",
+        colorName: v.colorName,
+        size: v.sizes?.[0] || "Standard",
         price: p.price,
-        image: p.variants[0].image,
+        image: v.image,
         quantity: 1,
       });
     });

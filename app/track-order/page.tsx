@@ -3,11 +3,15 @@
 import React, { useState } from "react";
 import { Search, Package, Truck, CheckCircle2, RotateCcw } from "lucide-react";
 import { formatBDT } from "@/lib/utils";
+import { useStore } from "@/lib/store";
+import { OrderItem } from "@/lib/types";
 
 export default function TrackOrderPage() {
+  const { orders } = useStore();
   const [orderNumber, setOrderNumber] = useState("");
   const [phone, setPhone] = useState("");
   const [tracked, setTracked] = useState(false);
+  const [foundOrder, setFoundOrder] = useState<OrderItem | null>(null);
   const [showReturnModal, setShowReturnModal] = useState(false);
 
   const handleTrack = (e: React.FormEvent) => {
@@ -16,20 +20,30 @@ export default function TrackOrderPage() {
       alert("Please enter both your Order Number and phone number.");
       return;
     }
+    const cleanNum = orderNumber.trim().toLowerCase();
+    const cleanPh = phone.trim().replace(/\D/g, "");
+
+    const match = orders.find(
+      (o) =>
+        o.id.toLowerCase() === cleanNum ||
+        (o.phone.replace(/\D/g, "").includes(cleanPh) && o.id.toLowerCase().includes(cleanNum))
+    );
+
+    setFoundOrder(match || null);
     setTracked(true);
   };
 
   return (
     <div className="py-12 md:py-20 px-4 md:px-8 max-w-4xl mx-auto space-y-10 min-h-[75vh]">
       <div className="text-center space-y-2 max-w-lg mx-auto">
-        <span className="text-xs uppercase tracking-widest text-accent-ink font-semibold">
+        <span className="text-xs uppercase tracking-widest text-accent-ink font-semibold font-mono">
           Client Logistics
         </span>
         <h1 className="font-serif text-3xl md:text-5xl font-medium text-text">
           Track Your Order
         </h1>
         <p className="text-xs md:text-sm text-muted">
-          Enter your order reference (e.g. SN-2610-00001) and contact mobile number.
+          Enter your order reference (e.g. SN-2610-48219) and contact mobile number.
         </p>
       </div>
 
@@ -43,7 +57,7 @@ export default function TrackOrderPage() {
               required
               value={orderNumber}
               onChange={(e) => setOrderNumber(e.target.value)}
-              placeholder="SN-2610-00001"
+              placeholder="SN-2610-48219"
               className="w-full p-3 rounded-lg bg-bg border border-border text-text font-mono uppercase focus:outline-none"
             />
           </div>
@@ -54,7 +68,7 @@ export default function TrackOrderPage() {
               required
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              placeholder="01700000000"
+              placeholder="01712345678"
               className="w-full p-3 rounded-lg bg-bg border border-border text-text font-mono focus:outline-none"
             />
           </div>
@@ -74,103 +88,127 @@ export default function TrackOrderPage() {
         <div className="p-6 md:p-8 rounded-2xl bg-surface border border-border space-y-8 animate-in fade-in duration-300">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-border/30 pb-4">
             <div>
-              <span className="font-mono text-sm font-semibold text-text">{orderNumber.toUpperCase()}</span>
-              <p className="text-xs text-muted">Placed on 10 March 2026 • Cash on Delivery (Steadfast Courier)</p>
+              <span className="font-mono text-sm font-semibold text-text">
+                {foundOrder?.id || orderNumber.toUpperCase()}
+              </span>
+              <p className="text-xs text-muted">
+                {foundOrder
+                  ? `Client: ${foundOrder.customer} • ${foundOrder.district} • ${foundOrder.payment}`
+                  : "Recorded in Dhaka Atelier • Cash on Delivery (Steadfast Courier)"}
+              </p>
+              {foundOrder && (
+                <p className="text-xs text-text font-medium mt-1">
+                  Enclosed: {foundOrder.items} • Total: {formatBDT(foundOrder.total)}
+                </p>
+              )}
             </div>
-            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-600">
-              Dispatched with Courier
+            <span
+              className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                foundOrder?.status === "Delivered"
+                  ? "bg-emerald-500/15 text-emerald-600"
+                  : foundOrder?.status === "Shipped"
+                  ? "bg-blue-500/15 text-blue-600"
+                  : "bg-indigo-500/15 text-indigo-600"
+              }`}
+            >
+              {foundOrder ? foundOrder.status : "In Production Queue"}
             </span>
           </div>
 
-          {/* Timeline */}
-          <div className="relative flex justify-between items-center max-w-2xl mx-auto py-6">
-            <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-border -translate-y-1/2 z-0" />
-
-            <div className="relative z-10 flex flex-col items-center text-center">
-              <div className="h-9 w-9 rounded-full bg-accent-ink text-bg flex items-center justify-center">
+          {/* Stepper */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-xs">
+            <div className="p-4 rounded-xl bg-surface-2/40 border border-border/40 space-y-1">
+              <div className="flex items-center gap-2 text-emerald-600 font-semibold">
                 <CheckCircle2 className="h-4 w-4" />
+                <span>Order Placed</span>
               </div>
-              <span className="text-[11px] font-semibold mt-2 text-text">Confirmed</span>
-              <span className="text-[9px] text-muted">10 Mar, 10:30 AM</span>
+              <p className="text-muted text-[11px]">Recorded at Dhaka Atelier</p>
             </div>
 
-            <div className="relative z-10 flex flex-col items-center text-center">
-              <div className="h-9 w-9 rounded-full bg-accent-ink text-bg flex items-center justify-center">
-                <Package className="h-4 w-4" />
+            <div className="p-4 rounded-xl bg-surface-2/40 border border-border/40 space-y-1">
+              <div className="flex items-center gap-2 text-emerald-600 font-semibold">
+                <CheckCircle2 className="h-4 w-4" />
+                <span>Fabric Inspected</span>
               </div>
-              <span className="text-[11px] font-semibold mt-2 text-text">Packed</span>
-              <span className="text-[9px] text-muted">10 Mar, 02:15 PM</span>
+              <p className="text-muted text-[11px]">Yarn tension &amp; drape verified</p>
             </div>
 
-            <div className="relative z-10 flex flex-col items-center text-center">
-              <div className="h-9 w-9 rounded-full bg-accent-ink text-bg flex items-center justify-center ring-4 ring-accent-ink/20 animate-pulse">
+            <div
+              className={`p-4 rounded-xl border space-y-1 ${
+                foundOrder?.status === "Shipped" || foundOrder?.status === "Delivered"
+                  ? "bg-surface-2/40 border-border/40 text-emerald-600"
+                  : "bg-surface-2/20 border-border/30 opacity-70"
+              }`}
+            >
+              <div className="flex items-center gap-2 font-semibold">
                 <Truck className="h-4 w-4" />
+                <span>Steadfast Dispatch</span>
               </div>
-              <span className="text-[11px] font-semibold mt-2 text-accent-ink">In Transit</span>
-              <span className="text-[9px] text-muted">Consignment #SF-99214</span>
+              <p className="text-muted text-[11px]">
+                {foundOrder?.courier ? `Consignment: ${foundOrder.courier}` : "Booking pending in Banani"}
+              </p>
             </div>
 
-            <div className="relative z-10 flex flex-col items-center text-center opacity-40">
-              <div className="h-9 w-9 rounded-full bg-surface-2 text-muted flex items-center justify-center border border-border">
-                <CheckCircle2 className="h-4 w-4" />
+            <div
+              className={`p-4 rounded-xl border space-y-1 ${
+                foundOrder?.status === "Delivered"
+                  ? "bg-surface-2/40 border-border/40 text-emerald-600"
+                  : "bg-surface-2/20 border-border/30 opacity-70"
+              }`}
+            >
+              <div className="flex items-center gap-2 font-semibold">
+                <Package className="h-4 w-4" />
+                <span>Delivered</span>
               </div>
-              <span className="text-[11px] font-semibold mt-2">Delivered</span>
-              <span className="text-[9px]">Est. Tomorrow</span>
+              <p className="text-muted text-[11px]">Handover to recipient</p>
             </div>
           </div>
 
-          {/* Return & Exchange Action (#24) */}
-          <div className="pt-4 border-t border-border/30 flex items-center justify-between text-xs">
-            <span className="text-muted">
-              Within 7-day window after delivery? You may request size or color exchange.
-            </span>
+          <div className="pt-2 flex justify-between items-center text-xs text-muted">
+            <span>Need modification to address or size? Contact Dhaka Atelier via WhatsApp.</span>
             <button
               onClick={() => setShowReturnModal(true)}
-              className="px-4 py-2 rounded-full border border-border text-text hover:bg-surface-2 font-medium flex items-center gap-1.5"
+              className="text-accent-ink hover:underline font-medium flex items-center gap-1"
             >
-              <RotateCcw className="h-3 w-3" />
-              <span>Request Return / Exchange (#24)</span>
+              <RotateCcw className="h-3.5 w-3.5" />
+              <span>Initiate Exchange (#20)</span>
             </button>
           </div>
         </div>
       )}
 
-      {/* Return Request Modal (#24) */}
+      {/* Exchange Modal */}
       {showReturnModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="fixed inset-0 bg-black/50" onClick={() => setShowReturnModal(false)} />
-          <div className="relative w-full max-w-md bg-surface p-6 rounded-2xl border border-border shadow-2xl z-10 space-y-4">
-            <h3 className="font-serif text-xl font-medium text-text">Return or Exchange Request</h3>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-surface border border-border rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <h3 className="font-serif text-xl font-medium text-text">Exchange Request (#20)</h3>
+            <p className="text-xs text-muted leading-relaxed">
+              We offer complimentary size exchanges within 3 calendar days of delivery for unworn garments with atelier seals intact.
+            </p>
             <div className="space-y-3 text-xs">
-              <div>
-                <label className="text-muted block mb-1">Reason for request</label>
-                <select className="w-full p-2.5 rounded bg-bg border border-border text-text">
-                  <option>Exchange for Different Length / Size</option>
-                  <option>Exchange for Different Color</option>
-                  <option>Fabric / Fit Preference</option>
-                  <option>Damaged in Transit</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-muted block mb-1">Desired replacement size</label>
-                <input type="text" placeholder="e.g. Size 56" className="w-full p-2.5 rounded bg-bg border border-border text-text" />
-              </div>
+              <label className="text-muted block">Exchange Reason:</label>
+              <select className="w-full p-2.5 rounded-lg bg-bg border border-border text-text">
+                <option>Size too large (request smaller size)</option>
+                <option>Size too short / need longer hem</option>
+                <option>Color exchange</option>
+                <option>Atelier flaw inspection</option>
+              </select>
             </div>
-            <div className="flex gap-2 pt-2">
-              <button
-                onClick={() => {
-                  alert("Return request registered. Our logistics team will contact you via WhatsApp within 4 hours.");
-                  setShowReturnModal(false);
-                }}
-                className="flex-1 py-2.5 rounded-full bg-espresso text-bg dark:bg-accent dark:text-bg text-xs uppercase tracking-wider font-semibold"
-              >
-                Submit Request
-              </button>
+            <div className="flex justify-end gap-2 pt-2">
               <button
                 onClick={() => setShowReturnModal(false)}
-                className="px-4 py-2.5 rounded-full border border-border text-xs text-muted"
+                className="px-4 py-2 rounded-full border border-border text-xs text-muted"
               >
-                Cancel
+                Close
+              </button>
+              <button
+                onClick={() => {
+                  alert("Exchange request recorded! Our concierge will arrange pickup.");
+                  setShowReturnModal(false);
+                }}
+                className="px-5 py-2 rounded-full bg-accent-ink text-white text-xs font-medium"
+              >
+                Submit Exchange
               </button>
             </div>
           </div>
