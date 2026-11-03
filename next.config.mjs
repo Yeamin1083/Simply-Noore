@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
-const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+// Captures the '/Simply-Noore' path injected by your workflow line 61
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''; 
 
 const nextConfig = {
   output: 'export',
@@ -9,16 +10,17 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'images.unsplash.com',
+        hostname: '://unsplash.com',
       },
       {
         protocol: 'https',
-        hostname: 'res.cloudinary.com',
+        hostname: '://cloudinary.com',
       },
     ],
   },
-  basePath: basePath ? basePath : undefined,
-  assetPrefix: basePath ? basePath : undefined,
+  basePath: basePath || undefined,
+  // Crucial: The trailing slash ensures NextJS assets map correctly on GitHub CDNs
+  assetPrefix: basePath ? `${basePath}/` : undefined, 
   reactStrictMode: true,
 };
 
