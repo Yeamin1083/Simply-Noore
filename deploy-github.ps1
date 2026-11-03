@@ -1,18 +1,24 @@
-# Simply Nooré - GitHub Push & Pages Deployment Helper
+# Simply Noore - Terminal Deployment and GitHub Push Helper
 Write-Host "==========================================" -ForegroundColor Cyan
-Write-Host " Simply Nooré — Push to GitHub & Deploy " -ForegroundColor Cyan
+Write-Host " Simply Noore - Push to GitHub and Deploy " -ForegroundColor Cyan
 Write-Host "==========================================" -ForegroundColor Cyan
 
 Write-Host "Target Repository: https://github.com/Yeamin1083/Simply-Noore" -ForegroundColor Yellow
 
-# Ensure all files are committed
+# Step 1: Save work and commit changes to main branch codebase
+Write-Host "`n[1/3] Staging and committing source files..." -ForegroundColor Yellow
 git add -A
-git commit -m "feat: complete Simply Nooré storefront and admin portal" -q
+git commit -m "feat: updated configurations for manual terminal deployment" -q
 
-# Push to main branch
-Write-Host "Pushing main branch to GitHub..." -ForegroundColor Green
+# Step 2: Push source code up to your primary main repository branch
+Write-Host "[2/3] Pushing main branch code to GitHub..." -ForegroundColor Green
 git push -u origin main
 
-Write-Host "`nSuccessfully pushed to GitHub!" -ForegroundColor Green
-Write-Host "GitHub Actions is now automatically building and deploying to GitHub Pages." -ForegroundColor Green
-Write-Host "Check progress at: https://github.com/Yeamin1083/Simply-Noore/actions" -ForegroundColor Cyan
+# Step 3: Run the new local compilation build and deploy the out folder directly
+Write-Host "[3/3] Initiating local Next.js build and branch deployment..." -ForegroundColor Green
+npm run deploy
+
+Write-Host "`n==========================================" -ForegroundColor Cyan
+Write-Host " SUCCESS: Simply Noore is completely live! " -ForegroundColor Green
+Write-Host " Visit site at: https://github.io " -ForegroundColor Cyan
+Write-Host "==========================================" -ForegroundColor Cyan
