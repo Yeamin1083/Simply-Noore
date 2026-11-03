@@ -77,6 +77,16 @@ const CATEGORY_OPTIONS = [
   { id: "outerwear", label: "Capes & Outerwear" },
 ];
 
+export interface FormColorVariant {
+  id: string;
+  colorName: string;
+  colorHex: string;
+  washColor: string;
+  washInk: string;
+  image: string;
+  stockCount: number;
+}
+
 function AdminContent() {
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab") as
@@ -156,25 +166,30 @@ function AdminContent() {
   const [formBadge, setFormBadge] = useState<string>("BEST SELLER");
   const [formDescription, setFormDescription] = useState("");
   const [formTags, setFormTags] = useState("Abaya, Nida, Everyday");
-  const [formStockCount, setFormStockCount] = useState<number>(15);
-  // Image config
-  const [formImage, setFormImage] = useState(IMAGE_PRESETS[0].url);
-  const [formSecondaryImage, setFormSecondaryImage] = useState("");
-  // Color & Wash config
-  const [formColorName, setFormColorName] = useState("Terracotta");
-  const [formColorHex, setFormColorHex] = useState("#C57045");
-  const [formWashColor, setFormWashColor] = useState("#F5DEC8");
-  const [formWashInk, setFormWashInk] = useState("#1F2A23");
   const [formSizes, setFormSizes] = useState<string[]>(["52", "54", "56"]);
 
-  // File Upload Reference for images
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Multiple Available Colors Manager
+  const [formColors, setFormColors] = useState<FormColorVariant[]>([
+    {
+      id: "col-1",
+      colorName: "Warm Terracotta",
+      colorHex: "#C57045",
+      washColor: "#F5DEC8",
+      washInk: "#1F2A23",
+      image: IMAGE_PRESETS[0].url,
+      stockCount: 15,
+    },
+  ]);
+
+  // Active color index for preset/file upload picker
+  const [activeColorIdxForUpload, setActiveColorIdxForUpload] = useState<number>(0);
+  const colorFileInputRef = useRef<HTMLInputElement>(null);
 
   // Journal Modal State
   const [showArticleModal, setShowArticleModal] = useState(false);
   const [editingArticleId, setEditingArticleId] = useState<string | null>(null);
   const [articleTitle, setArticleTitle] = useState("");
-  const [articleAuthor, setArticleAuthor] = useState("Editorial Atelier");
+  const [articleAuthor, setArticleAuthor] = useState("Simply Nooré Atelier");
   const [articleDate, setArticleDate] = useState("March 2026");
   const [articleImage, setArticleImage] = useState(IMAGE_PRESETS[0].url);
   const [articleExcerpt, setArticleExcerpt] = useState("");
@@ -204,16 +219,29 @@ function AdminContent() {
     setFormOriginalPrice(7500);
     setFormFabricName("Korean Nida Crepe");
     setFormBadge("NEW");
-    setFormDescription("Sculpted with seamless kimono batwing sleeves and soft flowing pleats.");
-    setFormTags("Abaya, Nida, Atelier");
-    setFormStockCount(12);
-    setFormImage(IMAGE_PRESETS[0].url);
-    setFormSecondaryImage("");
-    setFormColorName("Terracotta");
-    setFormColorHex("#C57045");
-    setFormWashColor("#F5DEC8");
-    setFormWashInk("#1F2A23");
+    setFormDescription("Crafted in soft Korean Nida with elegant kimono sleeves and flowing pleats.");
+    setFormTags("Abaya, Nida, Eid Special");
     setFormSizes(["52", "54", "56"]);
+    setFormColors([
+      {
+        id: `col-${Date.now()}-1`,
+        colorName: "Terracotta Rose",
+        colorHex: "#C57045",
+        washColor: "#F5DEC8",
+        washInk: "#1F2A23",
+        image: IMAGE_PRESETS[0].url,
+        stockCount: 12,
+      },
+      {
+        id: `col-${Date.now()}-2`,
+        colorName: "Sage Olive",
+        colorHex: "#8CA283",
+        washColor: "#DCE5D6",
+        washInk: "#1F2A23",
+        image: IMAGE_PRESETS[1].url,
+        stockCount: 8,
+      },
+    ]);
     setShowProductModal(true);
   };
 
@@ -229,37 +257,79 @@ function AdminContent() {
     setFormBadge(p.badge || "");
     setFormDescription(p.description || "");
     setFormTags(p.tags ? p.tags.join(", ") : "");
-    const v = p.variants?.[0] || {
-      stockCount: 10,
-      image: IMAGE_PRESETS[0].url,
-      colorName: "Natural",
-      colorHex: "#333",
-      washColor: "#EEE",
-      washInk: "#111",
-      sizes: ["52", "54"],
-    };
-    setFormStockCount(v.stockCount ?? 10);
-    setFormImage(v.image || IMAGE_PRESETS[0].url);
-    setFormSecondaryImage(v.secondaryImage || "");
-    setFormColorName(v.colorName || "Original");
-    setFormColorHex(v.colorHex || "#C57045");
-    setFormWashColor(v.washColor || "#F5DEC8");
-    setFormWashInk(v.washInk || "#1F2A23");
-    setFormSizes(v.sizes?.length ? v.sizes : ["52", "54", "56"]);
+    const firstSizes = p.variants?.[0]?.sizes;
+    setFormSizes(firstSizes && firstSizes.length > 0 ? firstSizes : ["52", "54", "56"]);
+
+    if (p.variants && p.variants.length > 0) {
+      setFormColors(
+        p.variants.map((v, i) => ({
+          id: v.id || `col-${i}`,
+          colorName: v.colorName || `Color ${i + 1}`,
+          colorHex: v.colorHex || "#C57045",
+          washColor: v.washColor || "#F5DEC8",
+          washInk: v.washInk || "#1F2A23",
+          image: v.image || IMAGE_PRESETS[0].url,
+          stockCount: v.stockCount ?? 10,
+        }))
+      );
+    } else {
+      setFormColors([
+        {
+          id: "col-default",
+          colorName: "Natural",
+          colorHex: "#C57045",
+          washColor: "#F5DEC8",
+          washInk: "#1F2A23",
+          image: IMAGE_PRESETS[0].url,
+          stockCount: 10,
+        },
+      ]);
+    }
     setShowProductModal(true);
   };
 
-  // Handle Image File Upload (Local to Data URL)
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Color Manager Helper Functions
+  const handleAddColorVariant = () => {
+    const nextIdx = formColors.length % IMAGE_PRESETS.length;
+    setFormColors((prev) => [
+      ...prev,
+      {
+        id: `col-${Date.now()}-${prev.length + 1}`,
+        colorName: `New Color ${prev.length + 1}`,
+        colorHex: "#2D3748",
+        washColor: "#E2E8F0",
+        washInk: "#1A202C",
+        image: IMAGE_PRESETS[nextIdx].url,
+        stockCount: 10,
+      },
+    ]);
+  };
+
+  const handleRemoveColorVariant = (idx: number) => {
+    if (formColors.length <= 1) {
+      alert("A product must have at least one color.");
+      return;
+    }
+    setFormColors((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleUpdateColor = (idx: number, fields: Partial<FormColorVariant>) => {
+    setFormColors((prev) =>
+      prev.map((c, i) => (i === idx ? { ...c, ...fields } : c))
+    );
+  };
+
+  // Upload Photo for a specific Color
+  const handleColorImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        alert("Image file size should be less than 2MB for fast static loading.");
+      if (file.size > 2.5 * 1024 * 1024) {
+        alert("Image file size should be less than 2.5MB for fast loading.");
       }
       const reader = new FileReader();
       reader.onloadend = () => {
         if (typeof reader.result === "string") {
-          setFormImage(reader.result);
+          handleUpdateColor(activeColorIdxForUpload, { image: reader.result });
         }
       };
       reader.readAsDataURL(file);
@@ -270,7 +340,12 @@ function AdminContent() {
   const handleSaveProduct = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formTitle.trim()) {
-      alert("Please enter a title for the silhouette.");
+      alert("Please enter a title for the product.");
+      return;
+    }
+
+    if (formColors.length === 0) {
+      alert("Please add at least one color for the product.");
       return;
     }
 
@@ -287,20 +362,20 @@ function AdminContent() {
       .map((t) => t.trim())
       .filter(Boolean);
 
-    const variant: ProductVariant = {
-      id: editingProductId ? `var-${editingProductId}` : `var-${Date.now()}`,
-      name: `${formTitle} - ${formColorName}`,
-      colorName: formColorName,
-      colorHex: formColorHex,
-      washColor: formWashColor,
-      washInk: formWashInk,
+    // Map all configured colors to product variants
+    const variants: ProductVariant[] = formColors.map((c, idx) => ({
+      id: c.id || `var-${Date.now()}-${idx}`,
+      name: `${formTitle} - ${c.colorName}`,
+      colorName: c.colorName || `Color ${idx + 1}`,
+      colorHex: c.colorHex || "#C57045",
+      washColor: c.washColor || "#F5DEC8",
+      washInk: c.washInk || "#1F2A23",
       sku: `SN-${formCategory.slice(0, 3).toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`,
-      inStock: formStockCount > 0,
-      stockCount: formStockCount,
+      inStock: (c.stockCount || 0) > 0,
+      stockCount: Number(c.stockCount) || 10,
       sizes: formSizes.length > 0 ? formSizes : ["Standard"],
-      image: formImage || IMAGE_PRESETS[0].url,
-      secondaryImage: formSecondaryImage || undefined,
-    };
+      image: c.image || IMAGE_PRESETS[0].url,
+    }));
 
     if (editingProductId) {
       // Update existing
@@ -316,9 +391,9 @@ function AdminContent() {
         descriptionBn: formTitleBn ? formDescription : undefined,
         fabricName: formFabricName,
         tags: tagsArray,
-        variants: [variant],
+        variants: variants,
       });
-      alert(`Silhouette "${formTitle}" updated successfully!`);
+      alert(`Product "${formTitle}" updated with ${variants.length} available colors!`);
     } else {
       // Create new
       const newProduct: Product = {
@@ -338,11 +413,11 @@ function AdminContent() {
         rating: 5.0,
         reviewCount: 1,
         tags: tagsArray,
-        occasions: ["Everyday", "Atelier Edit"],
-        variants: [variant],
+        occasions: ["Everyday", "Festive", "Occasion"],
+        variants: variants,
       };
       addProduct(newProduct);
-      alert(`New silhouette "${formTitle}" published to catalogue!`);
+      alert(`New product "${formTitle}" created with ${variants.length} available colors!`);
     }
 
     setShowProductModal(false);
@@ -354,7 +429,7 @@ function AdminContent() {
       ...p,
       id: `sn-${Date.now().toString().slice(-5)}`,
       slug: `${p.slug}-copy-${Math.floor(10 + Math.random() * 90)}`,
-      title: `${p.title} (Atelier Edit)`,
+      title: `${p.title} (New Edit)`,
       variants: p.variants.map((v) => ({
         ...v,
         id: `var-${Date.now()}-${Math.floor(10 + Math.random() * 90)}`,
@@ -366,7 +441,7 @@ function AdminContent() {
 
   // Delete Product Confirmation
   const handleDeleteProduct = (id: string, title: string) => {
-    if (confirm(`Are you sure you want to delete silhouette "${title}"? This cannot be undone.`)) {
+    if (confirm(`Are you sure you want to delete "${title}"? This will remove it from the store.`)) {
       deleteProduct(id);
     }
   };
@@ -392,7 +467,7 @@ function AdminContent() {
           const parsed = JSON.parse(event.target?.result as string);
           if (Array.isArray(parsed) && parsed.length > 0) {
             importProducts(parsed);
-            alert(`Successfully imported ${parsed.length} silhouettes into catalogue!`);
+            alert(`Successfully imported ${parsed.length} products into catalogue!`);
           } else {
             alert("Invalid catalogue JSON format.");
           }
@@ -423,21 +498,21 @@ function AdminContent() {
   // Orders: Verify payment
   const handleVerifyPayment = (orderId: string) => {
     updateOrderStatus(orderId, "Ready to Dispatch");
-    alert(`Payment for order ${orderId} verified. Status changed to "Ready to Dispatch".`);
+    alert(`Payment for order ${orderId} verified! Marked as Ready to Dispatch.`);
   };
 
   // Orders: Dispatch Steadfast
   const handleDispatchSteadfast = (orderId: string) => {
     const trackingCode = `ST-${Math.floor(1000000 + Math.random() * 9000000)}`;
     updateOrderStatus(orderId, "Shipped", trackingCode);
-    alert(`Order ${orderId} dispatched via Steadfast Courier! Consignment ID: ${trackingCode}`);
+    alert(`Order ${orderId} dispatched via Steadfast Courier! Tracking ID: ${trackingCode}`);
   };
 
   // Orders: Manual Order Submission
   const handleCreateManualOrder = (e: React.FormEvent) => {
     e.preventDefault();
     if (!manualCustomer || !manualPhone || !manualItems) {
-      alert("Please fill in customer name, phone number, and items.");
+      alert("Please fill in customer name, mobile number, and ordered items.");
       return;
     }
     const order: OrderItem = {
@@ -467,7 +542,7 @@ function AdminContent() {
   const openCreateArticle = () => {
     setEditingArticleId(null);
     setArticleTitle("");
-    setArticleAuthor("Editorial Atelier");
+    setArticleAuthor("Simply Nooré Atelier");
     setArticleDate("March 2026");
     setArticleImage(IMAGE_PRESETS[0].url);
     setArticleExcerpt("");
@@ -535,7 +610,7 @@ function AdminContent() {
     addCoupon({
       code: newCouponCode.trim().toUpperCase(),
       discountPercent: Number(newCouponDiscount),
-      description: newCouponDesc || `${newCouponDiscount}% privilege coupon`,
+      description: newCouponDesc || `${newCouponDiscount}% discount coupon`,
       active: true,
     });
     alert(`Coupon "${newCouponCode.toUpperCase()}" added!`);
@@ -587,7 +662,7 @@ function AdminContent() {
   // Calculate Live Overview Stats
   const totalRevenue = orders.reduce((sum, o) => sum + (o.status !== "Cancelled" ? o.total : 0), 0);
   const activeOrdersCount = orders.filter((o) => o.status !== "Delivered" && o.status !== "Cancelled").length;
-  const pendingBkashCount = orders.filter((o) => o.payment === "bKash" && o.status === "Pending").length;
+  const pendingBkashCount = orders.filter((o) => (o.payment === "bKash" || o.payment === "Nagad") && o.status === "Pending").length;
   const lowStockCount = products.filter((p) => (p.variants?.[0]?.stockCount ?? 0) <= 5).length;
 
   return (
@@ -598,14 +673,14 @@ function AdminContent() {
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-[11px] uppercase tracking-widest text-accent-ink font-semibold font-mono">
-              Dhaka Atelier Operations Console
+              Simply Nooré Admin Panel
             </span>
           </div>
           <h1 className="font-serif text-3xl md:text-4xl font-medium text-text mt-1">
-            Simply Nooré Atelier Portal
+            Store &amp; Inventory Management
           </h1>
           <p className="text-xs text-muted mt-1">
-            Complete management of Dhaka atelier inventory, model photography, guest orders, courier logistics &amp; editorial journal.
+            Manage dresses, multiple colors, guest orders, bKash &amp; Nagad payments, and shipping rates.
           </p>
         </div>
 
@@ -619,7 +694,7 @@ function AdminContent() {
                 : "text-muted hover:text-text"
             }`}
           >
-            Overview
+            Dashboard
           </button>
           <button
             onClick={() => setActiveTab("products")}
@@ -629,7 +704,7 @@ function AdminContent() {
                 : "text-muted hover:text-text"
             }`}
           >
-            <span>Silhouettes</span>
+            <span>Products</span>
             <span className="px-1.5 py-0.2 rounded-full bg-accent/30 text-accent-ink text-[10px] font-semibold">
               {products.length}
             </span>
@@ -642,7 +717,7 @@ function AdminContent() {
                 : "text-muted hover:text-text"
             }`}
           >
-            <span>Orders Queue</span>
+            <span>Orders</span>
             <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/15 text-emerald-600 text-[10px] font-semibold">
               {activeOrdersCount}
             </span>
@@ -655,7 +730,7 @@ function AdminContent() {
                 : "text-muted hover:text-text"
             }`}
           >
-            Journal ({articles.length})
+            Blog &amp; Stories ({articles.length})
           </button>
           <button
             onClick={() => setActiveTab("coupons")}
@@ -675,7 +750,7 @@ function AdminContent() {
                 : "text-muted hover:text-text"
             }`}
           >
-            Scene Studio
+            Colors &amp; Theme
           </button>
           <button
             onClick={() => setActiveTab("settings")}
@@ -685,7 +760,7 @@ function AdminContent() {
                 : "text-muted hover:text-text"
             }`}
           >
-            Settings &amp; Rules
+            Store Settings
           </button>
         </div>
       </div>
@@ -699,7 +774,7 @@ function AdminContent() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="p-5 rounded-2xl bg-surface border border-border shadow-sm space-y-1">
               <span className="text-[11px] uppercase tracking-wider text-muted font-medium font-mono">
-                Atelier Revenue
+                Total Store Revenue
               </span>
               <p className="font-serif text-2xl md:text-3xl font-semibold text-text">
                 {formatBDT(totalRevenue)}
@@ -712,13 +787,13 @@ function AdminContent() {
 
             <div className="p-5 rounded-2xl bg-surface border border-border shadow-sm space-y-1">
               <span className="text-[11px] uppercase tracking-wider text-muted font-medium font-mono">
-                Active Orders in Queue
+                Active Orders
               </span>
               <p className="font-serif text-2xl md:text-3xl font-semibold text-text">
                 {activeOrdersCount}
               </p>
               <span className="text-[11px] text-muted">
-                {orders.filter((o) => o.status === "Ready to Dispatch").length} ready for courier pickup
+                {orders.filter((o) => o.status === "Ready to Dispatch").length} ready for Steadfast courier
               </span>
             </div>
 
@@ -729,18 +804,18 @@ function AdminContent() {
               <p className="font-serif text-2xl md:text-3xl font-semibold text-[#E2136E]">
                 {pendingBkashCount} Pending
               </p>
-              <span className="text-[11px] text-muted">Advance screening #22</span>
+              <span className="text-[11px] text-muted">TrxID verification needed</span>
             </div>
 
             <div className="p-5 rounded-2xl bg-surface border border-border shadow-sm space-y-1">
               <span className="text-[11px] uppercase tracking-wider text-muted font-medium font-mono">
-                Catalogue Inventory
+                Total Products Listed
               </span>
               <p className="font-serif text-2xl md:text-3xl font-semibold text-text">
-                {products.length} Silhouettes
+                {products.length} Products
               </p>
               <span className={`text-[11px] font-medium ${lowStockCount > 0 ? "text-amber-600" : "text-emerald-600"}`}>
-                {lowStockCount > 0 ? `${lowStockCount} items low in atelier` : "All in healthy stock"}
+                {lowStockCount > 0 ? `${lowStockCount} items low in stock` : "All in healthy stock"}
               </span>
             </div>
           </div>
@@ -751,14 +826,14 @@ function AdminContent() {
               <div className="flex items-center gap-2.5">
                 <AlertCircle className="h-4 w-4 text-amber-600 flex-shrink-0" />
                 <span>
-                  <strong>Action Needed:</strong> {pendingBkashCount} pending digital payment(s) waiting for manual TrxID verification before dispatch.
+                  <strong>Action Needed:</strong> {pendingBkashCount} customer order(s) waiting for bKash/Nagad TrxID verification before courier dispatch.
                 </span>
               </div>
               <button
                 onClick={() => setActiveTab("orders")}
                 className="px-3.5 py-1.5 rounded-lg bg-amber-600 text-white font-medium hover:bg-amber-700 transition-colors flex-shrink-0"
               >
-                Review Orders Queue
+                Review Orders Now
               </button>
             </div>
           )}
@@ -767,8 +842,8 @@ function AdminContent() {
           <div className="p-6 rounded-2xl bg-surface border border-border space-y-4 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="font-serif text-xl font-medium text-text">Recent Orders Queue</h2>
-                <p className="text-xs text-muted">Real guest orders synced from storefront checkout</p>
+                <h2 className="font-serif text-xl font-medium text-text">Recent Orders</h2>
+                <p className="text-xs text-muted">Live customer orders from website checkout</p>
               </div>
               <button
                 onClick={() => setActiveTab("orders")}
@@ -783,13 +858,13 @@ function AdminContent() {
               <table className="w-full text-left text-xs">
                 <thead className="bg-surface-2/40 text-muted border-b border-border font-medium uppercase tracking-wider font-mono">
                   <tr>
-                    <th className="p-3">Reference</th>
-                    <th className="p-3">Client</th>
-                    <th className="p-3">Garments</th>
-                    <th className="p-3">Method</th>
-                    <th className="p-3">Amount</th>
+                    <th className="p-3">Order ID</th>
+                    <th className="p-3">Customer</th>
+                    <th className="p-3">Items</th>
+                    <th className="p-3">Payment</th>
+                    <th className="p-3">Total</th>
                     <th className="p-3">Status</th>
-                    <th className="p-3 text-right">Quick Action</th>
+                    <th className="p-3 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/20 text-text">
@@ -865,15 +940,15 @@ function AdminContent() {
       )}
 
       {/* ============================================================== */}
-      {/* 2. SILHOUETTES & PRODUCTS CATALOGUE TAB */}
+      {/* 2. PRODUCTS & DRESSES CATALOGUE TAB */}
       {/* ============================================================== */}
       {activeTab === "products" && (
         <div className="p-6 rounded-2xl bg-surface border border-border space-y-6 animate-in fade-in duration-200">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h2 className="font-serif text-2xl font-medium text-text">Catalogue &amp; Silhouette Inventory</h2>
+              <h2 className="font-serif text-2xl font-medium text-text">Product Catalogue &amp; Stock</h2>
               <p className="text-xs text-muted">
-                Configure garments, photography, fabric attributes, size offerings, and atelier stock.
+                Add dresses, configure multiple available colors, upload photos, set pricing, and manage stock.
               </p>
             </div>
 
@@ -883,13 +958,13 @@ function AdminContent() {
                 className="px-4 py-2 rounded-full bg-accent-ink text-white hover:opacity-90 text-xs uppercase tracking-wider font-semibold shadow-md flex items-center gap-1.5"
               >
                 <Plus className="h-4 w-4" />
-                <span>+ Create Silhouette</span>
+                <span>+ Add New Product</span>
               </button>
 
               <button
                 onClick={handleExportCatalogue}
                 className="px-3 py-2 rounded-full border border-border bg-surface hover:bg-surface-2 text-xs text-muted hover:text-text font-medium flex items-center gap-1.5"
-                title="Backup full catalogue as JSON"
+                title="Download catalogue JSON backup"
               >
                 <Download className="h-3.5 w-3.5" />
                 <span>Export JSON</span>
@@ -903,12 +978,11 @@ function AdminContent() {
 
               <button
                 onClick={() => {
-                  if (confirm("Reset catalogue back to initial 8 silhouettes? Custom added products will be reset.")) {
+                  if (confirm("Reset catalogue back to initial collection?")) {
                     resetProducts();
                   }
                 }}
                 className="px-3 py-2 rounded-full border border-red-500/30 text-red-600 hover:bg-red-500/10 text-xs font-medium"
-                title="Reset to default collection"
               >
                 Reset Defaults
               </button>
@@ -921,7 +995,7 @@ function AdminContent() {
               <Search className="h-3.5 w-3.5 absolute left-3 top-3 text-muted" />
               <input
                 type="text"
-                placeholder="Search by title or fabric..."
+                placeholder="Search products by title or fabric..."
                 value={productSearch}
                 onChange={(e) => setProductSearch(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 rounded-xl bg-surface-2/40 border border-border text-xs text-text focus:outline-none"
@@ -954,14 +1028,14 @@ function AdminContent() {
           {/* Product Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredProducts.map((p) => {
-              const variant = p.variants?.[0] || {
+              const primaryVariant = p.variants?.[0] || {
                 image: IMAGE_PRESETS[0].url,
                 stockCount: 0,
                 colorName: "Natural",
                 washColor: "#F5DEC8",
                 sizes: ["Standard"],
               };
-              const stock = variant.stockCount ?? 0;
+              const totalStock = p.variants?.reduce((sum, v) => sum + (v.stockCount || 0), 0) ?? 0;
 
               return (
                 <div
@@ -969,8 +1043,8 @@ function AdminContent() {
                   className="p-4 rounded-xl border border-border/70 bg-surface-2/20 flex flex-col justify-between gap-3 text-xs hover:border-accent-ink transition-colors group"
                 >
                   <div className="flex gap-3">
-                    <div className="h-24 w-20 rounded-lg bg-surface-2 relative overflow-hidden flex-shrink-0 border border-border/40">
-                      <img src={variant.image} alt={p.title} className="object-cover h-full w-full" />
+                    <div className="h-28 w-20 rounded-lg bg-surface-2 relative overflow-hidden flex-shrink-0 border border-border/40">
+                      <img src={primaryVariant.image} alt={p.title} className="object-cover h-full w-full" />
                       {p.badge && (
                         <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-black/70 text-white text-[9px] uppercase font-bold tracking-wider">
                           {p.badge}
@@ -978,19 +1052,19 @@ function AdminContent() {
                       )}
                     </div>
 
-                    <div className="flex-1 space-y-1">
+                    <div className="flex-1 space-y-1 min-w-0">
                       <div className="flex items-start justify-between gap-1">
-                        <h4 className="font-serif text-sm font-semibold text-text line-clamp-1">{p.title}</h4>
+                        <h4 className="font-serif text-sm font-semibold text-text truncate">{p.title}</h4>
                         <span
                           className={`px-2 py-0.5 rounded text-[10px] font-semibold whitespace-nowrap ${
-                            stock > 5 ? "bg-emerald-500/10 text-emerald-600" : "bg-amber-500/15 text-amber-700"
+                            totalStock > 5 ? "bg-emerald-500/10 text-emerald-600" : "bg-amber-500/15 text-amber-700"
                           }`}
                         >
-                          {stock > 0 ? `${stock} in stock` : "Sold Out"}
+                          {totalStock > 0 ? `${totalStock} in stock` : "Sold Out"}
                         </span>
                       </div>
 
-                      <p className="text-muted text-[11px]">{p.categoryLabel} • {p.fabricName}</p>
+                      <p className="text-muted text-[11px] truncate">{p.categoryLabel} • {p.fabricName}</p>
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-accent-ink text-sm">{formatBDT(p.price)}</span>
                         {p.originalPrice && p.originalPrice > p.price && (
@@ -998,15 +1072,25 @@ function AdminContent() {
                         )}
                       </div>
 
-                      <div className="flex items-center gap-2 pt-1 text-[11px] text-muted">
-                        <span
-                          className="h-3 w-3 rounded-full border border-black/20"
-                          style={{ backgroundColor: variant.washColor || "#CCC" }}
-                          title={`Wash: ${variant.colorName}`}
-                        />
-                        <span>{variant.colorName}</span>
-                        <span>•</span>
-                        <span>Sizes: {variant.sizes?.join(", ")}</span>
+                      {/* Display All Available Colors */}
+                      <div className="pt-1.5">
+                        <span className="text-[10px] text-muted block mb-1 font-medium">
+                          Available Colors ({p.variants?.length || 1}):
+                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {p.variants?.map((v, i) => (
+                            <span
+                              key={v.id || i}
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-surface border border-border text-[10px] text-text"
+                            >
+                              <span
+                                className="h-2.5 w-2.5 rounded-full border border-black/20"
+                                style={{ backgroundColor: v.colorHex || "#CCC" }}
+                              />
+                              <span className="truncate max-w-[80px]">{v.colorName}</span>
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1015,7 +1099,7 @@ function AdminContent() {
                   <div className="flex items-center justify-between pt-2 border-t border-border/30">
                     {/* Stock Stepper */}
                     <div className="flex items-center gap-1.5 text-xs">
-                      <span className="text-muted text-[11px]">Qty:</span>
+                      <span className="text-muted text-[11px]">Stock:</span>
                       <button
                         onClick={() => handleAdjustStock(p, -1)}
                         className="h-6 w-6 rounded border border-border flex items-center justify-center hover:bg-surface-2 text-muted"
@@ -1023,7 +1107,7 @@ function AdminContent() {
                       >
                         -
                       </button>
-                      <span className="font-mono font-bold text-text px-1">{stock}</span>
+                      <span className="font-mono font-bold text-text px-1">{totalStock}</span>
                       <button
                         onClick={() => handleAdjustStock(p, 1)}
                         className="h-6 w-6 rounded border border-border flex items-center justify-center hover:bg-surface-2 text-muted"
@@ -1046,21 +1130,21 @@ function AdminContent() {
                       <button
                         onClick={() => handleDuplicateProduct(p)}
                         className="p-1.5 rounded hover:bg-surface-2 text-muted hover:text-text"
-                        title="Duplicate Silhouette"
+                        title="Duplicate Product"
                       >
                         <Copy className="h-3.5 w-3.5" />
                       </button>
                       <button
                         onClick={() => openEditProduct(p)}
                         className="p-1.5 rounded bg-accent/20 text-accent-ink hover:bg-accent/30 font-medium"
-                        title="Edit Silhouette"
+                        title="Edit Colors & Product"
                       >
                         <Edit3 className="h-3.5 w-3.5" />
                       </button>
                       <button
                         onClick={() => handleDeleteProduct(p.id, p.title)}
                         className="p-1.5 rounded text-red-600 hover:bg-red-500/10"
-                        title="Delete Silhouette"
+                        title="Delete Product"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -1080,9 +1164,9 @@ function AdminContent() {
         <div className="p-6 rounded-2xl bg-surface border border-border space-y-6 animate-in fade-in duration-200">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h2 className="font-serif text-2xl font-medium text-text">Fulfillment &amp; Courier Queue</h2>
+              <h2 className="font-serif text-2xl font-medium text-text">Customer Orders &amp; Delivery</h2>
               <p className="text-xs text-muted">
-                Screen guest orders, verify digital advances (#22), generate Steadfast consignments, and print slips.
+                Review website orders, verify bKash &amp; Nagad payments, generate Steadfast tracking codes, and print slips.
               </p>
             </div>
 
@@ -1103,7 +1187,7 @@ function AdminContent() {
               <Search className="h-3.5 w-3.5 absolute left-3 top-3 text-muted" />
               <input
                 type="text"
-                placeholder="Search reference, client, phone, or TrxID..."
+                placeholder="Search reference, customer, phone, or TrxID..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 rounded-xl bg-surface-2/40 border border-border text-xs text-text focus:outline-none"
@@ -1131,7 +1215,7 @@ function AdminContent() {
           <div className="divide-y divide-border/20">
             {filteredOrders.length === 0 ? (
               <div className="py-12 text-center text-muted text-xs">
-                No orders matching filter criteria.
+                No orders found.
               </div>
             ) : (
               filteredOrders.map((o) => (
@@ -1166,7 +1250,7 @@ function AdminContent() {
                       <strong>{formatBDT(o.total)}</strong>
                       {o.courier && (
                         <span className="ml-2 text-accent-ink font-mono font-bold">
-                          [{o.courier}]
+                          [Steadfast: {o.courier}]
                         </span>
                       )}
                     </p>
@@ -1224,15 +1308,15 @@ function AdminContent() {
       )}
 
       {/* ============================================================== */}
-      {/* 4. JOURNAL & EDITORIAL TAB */}
+      {/* 4. BLOG & STORIES TAB */}
       {/* ============================================================== */}
       {activeTab === "journal" && (
         <div className="p-6 rounded-2xl bg-surface border border-border space-y-6 animate-in fade-in duration-200">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h2 className="font-serif text-2xl font-medium text-text">Nooré Journal &amp; Editorial</h2>
+              <h2 className="font-serif text-2xl font-medium text-text">Journal &amp; Blog Management</h2>
               <p className="text-xs text-muted">
-                Publish design philosophies, fabric essays, and seasonal campaign narratives.
+                Publish articles, modest styling guides, fabric guides, and seasonal collection stories.
               </p>
             </div>
 
@@ -1242,11 +1326,11 @@ function AdminContent() {
                 className="px-4 py-2 rounded-full bg-accent-ink text-white hover:opacity-90 text-xs uppercase tracking-wider font-semibold shadow-md flex items-center gap-1.5"
               >
                 <Plus className="h-4 w-4" />
-                <span>+ Write Editorial</span>
+                <span>+ Write New Story</span>
               </button>
               <button
                 onClick={() => {
-                  if (confirm("Reset journal articles back to defaults?")) {
+                  if (confirm("Reset articles back to default stories?")) {
                     resetArticles();
                   }
                 }}
@@ -1315,9 +1399,9 @@ function AdminContent() {
         <div className="p-6 rounded-2xl bg-surface border border-border space-y-6 animate-in fade-in duration-200">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h2 className="font-serif text-2xl font-medium text-text">Privilege &amp; Promotional Codes</h2>
+              <h2 className="font-serif text-2xl font-medium text-text">Discount &amp; Privilege Coupons</h2>
               <p className="text-xs text-muted">
-                Create and manage customer discount vouchers applicable during bag review (#14).
+                Create coupon codes that customers can enter on their shopping bag page for instant discounts.
               </p>
             </div>
 
@@ -1345,7 +1429,7 @@ function AdminContent() {
                 <div className="pt-2 flex justify-end">
                   <button
                     onClick={() => {
-                      if (confirm(`Remove coupon ${c.code}?`)) {
+                      if (confirm(`Delete coupon ${c.code}?`)) {
                         deleteCoupon(c.code);
                       }
                     }}
@@ -1361,14 +1445,14 @@ function AdminContent() {
       )}
 
       {/* ============================================================== */}
-      {/* 6. SCENE STUDIO (WCAG CONTRAST) TAB */}
+      {/* 6. COLORS & THEME STUDIO TAB */}
       {/* ============================================================== */}
       {activeTab === "scene" && (
         <div className="p-6 rounded-2xl bg-surface border border-border space-y-6 animate-in fade-in duration-200">
           <div className="space-y-1">
-            <h2 className="font-serif text-2xl font-medium text-text">Scene Wash Studio (#13)</h2>
+            <h2 className="font-serif text-2xl font-medium text-text">Garment Color &amp; Wash Tint Studio</h2>
             <p className="text-xs text-muted">
-              Auto-extract wash colors from garment photography, preview light and dark contrast ratios, and test WCAG AA compliance.
+              Inspect fabric wash colors, test contrast readability, and preview color themes across light and dark modes.
             </p>
           </div>
 
@@ -1390,13 +1474,14 @@ function AdminContent() {
                     <span className="font-serif text-xl font-medium">{v.colorName} Wash</span>
                     <span className="text-[11px] font-mono opacity-80">{v.washColor}</span>
                     <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-500/25 text-emerald-800 font-semibold mt-1">
-                      WCAG AA Passed (7.8:1)
+                      WCAG AA Contrast Passed (7.8:1)
                     </span>
                   </div>
                   <div className="space-y-1 text-muted text-[11px]">
                     <p>Color Hex: <code>{v.colorHex}</code></p>
                     <p>Wash Ink: <code>{v.washInk}</code></p>
                     <p>Fabric: <strong>{p.fabricName}</strong></p>
+                    <p>Total Colors Configured: <strong>{p.variants?.length || 1}</strong></p>
                   </div>
                 </div>
               );
@@ -1406,15 +1491,15 @@ function AdminContent() {
       )}
 
       {/* ============================================================== */}
-      {/* 7. SETTINGS & LOGISTICS RULES TAB */}
+      {/* 7. STORE SETTINGS & LOGISTICS TAB */}
       {/* ============================================================== */}
       {activeTab === "settings" && (
         <form onSubmit={handleSaveSettings} className="p-6 rounded-2xl bg-surface border border-border space-y-6 animate-in fade-in duration-200">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/30 pb-4">
             <div>
-              <h2 className="font-serif text-2xl font-medium text-text">Logistics, Rates &amp; Atelier Rules</h2>
+              <h2 className="font-serif text-2xl font-medium text-text">Store Settings, Shipping &amp; bKash Rules</h2>
               <p className="text-xs text-muted">
-                Control nationwide courier tariffs, announcement ribbon messages, and payment screening policies.
+                Control delivery charges, top banner announcement, and bKash/Nagad merchant accounts.
               </p>
             </div>
 
@@ -1429,7 +1514,7 @@ function AdminContent() {
               <button
                 type="button"
                 onClick={() => {
-                  if (confirm("Reset settings back to default atelier standards?")) {
+                  if (confirm("Reset settings back to default values?")) {
                     resetSiteSettings();
                   }
                 }}
@@ -1443,7 +1528,7 @@ function AdminContent() {
           {settingsSavedToast && (
             <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 text-xs flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4" />
-              <span>Atelier configuration saved and applied across the entire site!</span>
+              <span>Settings saved! Your changes are now live across the website.</span>
             </div>
           )}
 
@@ -1452,11 +1537,11 @@ function AdminContent() {
             <div className="p-5 rounded-xl border border-border bg-surface-2/20 space-y-4">
               <h3 className="font-serif text-base font-medium text-text flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-accent-ink" />
-                <span>Top Announcement Ribbon (#7)</span>
+                <span>Top Website Announcement Banner</span>
               </h3>
               <div className="space-y-3">
                 <div>
-                  <label className="text-muted block mb-1">Primary Banner Text</label>
+                  <label className="text-muted block mb-1">Banner Announcement Text</label>
                   <input
                     type="text"
                     value={settingsForm.announcementText}
@@ -1465,7 +1550,7 @@ function AdminContent() {
                   />
                 </div>
                 <div>
-                  <label className="text-muted block mb-1">Secondary Subtext (Desktop)</label>
+                  <label className="text-muted block mb-1">Secondary Subtext (Desktop View)</label>
                   <input
                     type="text"
                     value={settingsForm.announcementSubtext}
@@ -1480,12 +1565,12 @@ function AdminContent() {
             <div className="p-5 rounded-xl border border-border bg-surface-2/20 space-y-4">
               <h3 className="font-serif text-base font-medium text-text flex items-center gap-2">
                 <Truck className="h-4 w-4 text-accent-ink" />
-                <span>Courier Delivery Tariffs (BDT)</span>
+                <span>Courier Delivery Charges (Taka / BDT)</span>
               </h3>
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-muted block mb-1">Inside Dhaka (1-2 days)</label>
+                    <label className="text-muted block mb-1">Inside Dhaka City (1-2 Days)</label>
                     <input
                       type="number"
                       value={settingsForm.insideDhakaShipping}
@@ -1494,7 +1579,7 @@ function AdminContent() {
                     />
                   </div>
                   <div>
-                    <label className="text-muted block mb-1">Outside Dhaka (2-4 days)</label>
+                    <label className="text-muted block mb-1">Outside Dhaka Nationwide (2-4 Days)</label>
                     <input
                       type="number"
                       value={settingsForm.outsideDhakaShipping}
@@ -1504,7 +1589,7 @@ function AdminContent() {
                   </div>
                 </div>
                 <div>
-                  <label className="text-muted block mb-1">Free Shipping Order Threshold (BDT)</label>
+                  <label className="text-muted block mb-1">Free Delivery Order Threshold (Taka)</label>
                   <input
                     type="number"
                     value={settingsForm.freeShippingThreshold}
@@ -1519,7 +1604,7 @@ function AdminContent() {
             <div className="p-5 rounded-xl border border-border bg-surface-2/20 space-y-4">
               <h3 className="font-serif text-base font-medium text-text flex items-center gap-2">
                 <DollarSign className="h-4 w-4 text-[#E2136E]" />
-                <span>bKash &amp; Nagad Merchant Screening (#22)</span>
+                <span>bKash &amp; Nagad Merchant Settings</span>
               </h3>
               <div className="space-y-3">
                 <div>
@@ -1541,7 +1626,7 @@ function AdminContent() {
                   />
                 </div>
                 <div>
-                  <label className="text-muted block mb-1">Advance Payment Required Threshold (BDT)</label>
+                  <label className="text-muted block mb-1">Advance Payment Threshold (Taka)</label>
                   <input
                     type="number"
                     value={settingsForm.advancePaymentRequiredThreshold}
@@ -1556,11 +1641,11 @@ function AdminContent() {
             <div className="p-5 rounded-xl border border-border bg-surface-2/20 space-y-4">
               <h3 className="font-serif text-base font-medium text-text flex items-center gap-2">
                 <Info className="h-4 w-4 text-accent-ink" />
-                <span>Atelier Location &amp; Concierge Support</span>
+                <span>Store Address &amp; Customer Support</span>
               </h3>
               <div className="space-y-3">
                 <div>
-                  <label className="text-muted block mb-1">Concierge Mobile / WhatsApp</label>
+                  <label className="text-muted block mb-1">WhatsApp / Phone Number</label>
                   <input
                     type="text"
                     value={settingsForm.contactPhone}
@@ -1578,7 +1663,7 @@ function AdminContent() {
                   />
                 </div>
                 <div>
-                  <label className="text-muted block mb-1">Dhaka Atelier Address</label>
+                  <label className="text-muted block mb-1">Store Address (Banani / Dhaka)</label>
                   <input
                     type="text"
                     value={settingsForm.atelierAddress}
@@ -1593,18 +1678,18 @@ function AdminContent() {
       )}
 
       {/* ============================================================== */}
-      {/* PRODUCT CREATE / EDIT MODAL */}
+      {/* PRODUCT CREATE / EDIT MODAL (WITH MULTI-COLOR MANAGEMENT) */}
       {/* ============================================================== */}
       {showProductModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-surface border border-border rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 md:p-8 space-y-6 shadow-2xl animate-in zoom-in-95 duration-200">
+          <div className="bg-surface border border-border rounded-2xl max-w-3xl w-full max-h-[92vh] overflow-y-auto p-6 md:p-8 space-y-6 shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between border-b border-border/30 pb-4">
               <div>
                 <h3 className="font-serif text-2xl font-medium text-text">
-                  {editingProductId ? "Edit Silhouette Configuration" : "Create New Atelier Silhouette"}
+                  {editingProductId ? "Edit Product & Colors" : "Add New Product"}
                 </h3>
                 <p className="text-xs text-muted">
-                  Configure garment photography, wash colors, fabric, pricing, and stock.
+                  Configure product details, multiple available colors with individual photos, pricing, and sizes.
                 </p>
               </div>
               <button
@@ -1615,229 +1700,252 @@ function AdminContent() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveProduct} className="space-y-5 text-xs">
-              {/* Title & Category */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-muted font-medium block mb-1">Piece Title (English) *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formTitle}
-                    onChange={(e) => setFormTitle(e.target.value)}
-                    placeholder="e.g. Rawdah Nida Kimono Abaya"
-                    className="w-full p-2.5 rounded-lg bg-bg border border-border text-text focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="text-muted font-medium block mb-1">Piece Title (Bangla)</label>
-                  <input
-                    type="text"
-                    value={formTitleBn}
-                    onChange={(e) => setFormTitleBn(e.target.value)}
-                    placeholder="e.g. রওদা ড্র্যাপড আবায়া"
-                    className="w-full p-2.5 rounded-lg bg-bg border border-border text-text focus:outline-none font-bengali"
-                  />
-                </div>
-              </div>
+            <form onSubmit={handleSaveProduct} className="space-y-6 text-xs">
+              {/* Product Basic Info */}
+              <div className="space-y-4 p-4 rounded-xl border border-border bg-surface-2/20">
+                <span className="font-semibold text-text uppercase tracking-wider text-[11px] block">
+                  1. Basic Details
+                </span>
 
-              {/* Category & Fabric */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-muted font-medium block mb-1">Category *</label>
-                  <select
-                    value={formCategory}
-                    onChange={(e) => setFormCategory(e.target.value)}
-                    className="w-full p-2.5 rounded-lg bg-bg border border-border text-text focus:outline-none"
-                  >
-                    {CATEGORY_OPTIONS.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-muted font-medium block mb-1">Fabric Composition *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formFabricName}
-                    onChange={(e) => setFormFabricName(e.target.value)}
-                    placeholder="e.g. Korean Nida Crepe / Medina Silk"
-                    className="w-full p-2.5 rounded-lg bg-bg border border-border text-text focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Price, Original Price, Badge */}
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="text-muted font-medium block mb-1">Price (BDT) *</label>
-                  <input
-                    type="number"
-                    required
-                    value={formPrice}
-                    onChange={(e) => setFormPrice(Number(e.target.value))}
-                    className="w-full p-2.5 rounded-lg bg-bg border border-border text-text font-mono focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="text-muted font-medium block mb-1">Original Price (BDT)</label>
-                  <input
-                    type="number"
-                    value={formOriginalPrice}
-                    onChange={(e) => setFormOriginalPrice(Number(e.target.value))}
-                    className="w-full p-2.5 rounded-lg bg-bg border border-border text-text font-mono focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="text-muted font-medium block mb-1">Editorial Badge</label>
-                  <select
-                    value={formBadge}
-                    onChange={(e) => setFormBadge(e.target.value)}
-                    className="w-full p-2.5 rounded-lg bg-bg border border-border text-text focus:outline-none"
-                  >
-                    <option value="">None</option>
-                    <option value="BEST SELLER">BEST SELLER</option>
-                    <option value="NEW">NEW</option>
-                    <option value="SALE">SALE</option>
-                    <option value="PRE-ORDER">PRE-ORDER</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Image Manager */}
-              <div className="p-4 rounded-xl border border-border bg-surface-2/30 space-y-3">
-                <label className="text-muted font-semibold block uppercase tracking-wider text-[11px]">
-                  Garment Photography (Image Manager)
-                </label>
-
-                <div className="flex gap-4 items-start">
-                  {/* Image Preview Box */}
-                  <div className="h-28 w-24 rounded-lg bg-surface-2 border border-border overflow-hidden relative flex-shrink-0 shadow-inner">
-                    {formImage ? (
-                      <img src={formImage} alt="Preview" className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="h-full flex items-center justify-center text-muted text-[10px]">No Image</div>
-                    )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-muted font-medium block mb-1">Product Title (English) *</label>
+                    <input
+                      type="text"
+                      required
+                      value={formTitle}
+                      onChange={(e) => setFormTitle(e.target.value)}
+                      placeholder="e.g. Rawdah Nida Kimono Abaya"
+                      className="w-full p-2.5 rounded-lg bg-bg border border-border text-text focus:outline-none"
+                    />
                   </div>
+                  <div>
+                    <label className="text-muted font-medium block mb-1">Product Title (Bangla)</label>
+                    <input
+                      type="text"
+                      value={formTitleBn}
+                      onChange={(e) => setFormTitleBn(e.target.value)}
+                      placeholder="e.g. রওদা ড্র্যাপড আবায়া"
+                      className="w-full p-2.5 rounded-lg bg-bg border border-border text-text focus:outline-none"
+                    />
+                  </div>
+                </div>
 
-                  <div className="flex-1 space-y-2">
-                    <div>
-                      <span className="text-[11px] text-muted block mb-1">Image URL (Unsplash / Cloudinary / CDN):</span>
-                      <input
-                        type="url"
-                        value={formImage}
-                        onChange={(e) => setFormImage(e.target.value)}
-                        placeholder="https://..."
-                        className="w-full p-2 rounded bg-bg border border-border text-text text-xs focus:outline-none font-mono"
-                      />
-                    </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-muted font-medium block mb-1">Product Category *</label>
+                    <select
+                      value={formCategory}
+                      onChange={(e) => setFormCategory(e.target.value)}
+                      className="w-full p-2.5 rounded-lg bg-bg border border-border text-text focus:outline-none"
+                    >
+                      {CATEGORY_OPTIONS.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-muted font-medium block mb-1">Fabric Material *</label>
+                    <input
+                      type="text"
+                      required
+                      value={formFabricName}
+                      onChange={(e) => setFormFabricName(e.target.value)}
+                      placeholder="e.g. Korean Nida Crepe / Medina Silk"
+                      className="w-full p-2.5 rounded-lg bg-bg border border-border text-text focus:outline-none"
+                    />
+                  </div>
+                </div>
 
-                    <div className="flex items-center gap-2 pt-1">
+                {/* Price, Original Price, Badge */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-muted font-medium block mb-1">Selling Price (Taka) *</label>
+                    <input
+                      type="number"
+                      required
+                      value={formPrice}
+                      onChange={(e) => setFormPrice(Number(e.target.value))}
+                      className="w-full p-2.5 rounded-lg bg-bg border border-border text-text font-mono focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-muted font-medium block mb-1">Original Price (for strikethrough)</label>
+                    <input
+                      type="number"
+                      value={formOriginalPrice}
+                      onChange={(e) => setFormOriginalPrice(Number(e.target.value))}
+                      className="w-full p-2.5 rounded-lg bg-bg border border-border text-text font-mono focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-muted font-medium block mb-1">Highlight Badge</label>
+                    <select
+                      value={formBadge}
+                      onChange={(e) => setFormBadge(e.target.value)}
+                      className="w-full p-2.5 rounded-lg bg-bg border border-border text-text focus:outline-none"
+                    >
+                      <option value="">None</option>
+                      <option value="BEST SELLER">BEST SELLER</option>
+                      <option value="NEW">NEW</option>
+                      <option value="SALE">SALE</option>
+                      <option value="PRE-ORDER">PRE-ORDER</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* MULTIPLE AVAILABLE COLORS SECTION */}
+              <div className="space-y-4 p-4 rounded-xl border border-accent/40 bg-accent/5">
+                <div className="flex items-center justify-between border-b border-border/30 pb-2">
+                  <div>
+                    <span className="font-semibold text-text uppercase tracking-wider text-[11px] block">
+                      2. Available Colors &amp; Photos ({formColors.length})
+                    </span>
+                    <p className="text-[11px] text-muted">
+                      Add all the colors this dress comes in, with a photo for each color.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAddColorVariant}
+                    className="px-3 py-1.5 rounded-full bg-accent-ink text-white font-medium text-xs hover:opacity-90 flex items-center gap-1 shadow-sm"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>+ Add Color</span>
+                  </button>
+                </div>
+
+                {/* Color Variants List */}
+                <div className="space-y-3">
+                  {formColors.map((colorItem, cIdx) => (
+                    <div
+                      key={colorItem.id || cIdx}
+                      className="p-3.5 rounded-xl border border-border bg-surface flex flex-col md:flex-row items-start md:items-center gap-3.5 shadow-sm"
+                    >
+                      {/* Photo Thumbnail */}
+                      <div className="h-20 w-16 rounded-lg bg-surface-2 border border-border overflow-hidden flex-shrink-0 relative">
+                        <img src={colorItem.image} alt={colorItem.colorName} className="h-full w-full object-cover" />
+                      </div>
+
+                      {/* Color Details Inputs */}
+                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 flex-1 w-full">
+                        <div>
+                          <label className="text-muted block text-[10px] mb-0.5">Color Name *</label>
+                          <input
+                            type="text"
+                            required
+                            value={colorItem.colorName}
+                            onChange={(e) => handleUpdateColor(cIdx, { colorName: e.target.value })}
+                            placeholder="e.g. Sage Olive"
+                            className="w-full p-2 rounded bg-bg border border-border text-text text-xs focus:outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-muted block text-[10px] mb-0.5">Color Swatch</label>
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type="color"
+                              value={colorItem.colorHex}
+                              onChange={(e) => handleUpdateColor(cIdx, { colorHex: e.target.value })}
+                              className="h-8 w-8 p-0 rounded border border-border cursor-pointer flex-shrink-0"
+                            />
+                            <input
+                              type="text"
+                              value={colorItem.colorHex}
+                              onChange={(e) => handleUpdateColor(cIdx, { colorHex: e.target.value })}
+                              className="w-full p-2 rounded bg-bg border border-border text-text font-mono text-[11px] focus:outline-none"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-muted block text-[10px] mb-0.5">Stock Count</label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={colorItem.stockCount}
+                            onChange={(e) => handleUpdateColor(cIdx, { stockCount: Number(e.target.value) })}
+                            className="w-full p-2 rounded bg-bg border border-border text-text font-mono text-xs focus:outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-muted block text-[10px] mb-0.5">Color Photo (URL or Upload)</label>
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="url"
+                              value={colorItem.image}
+                              onChange={(e) => handleUpdateColor(cIdx, { image: e.target.value })}
+                              placeholder="https://..."
+                              className="w-full p-2 rounded bg-bg border border-border text-text font-mono text-[10px] focus:outline-none truncate"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveColorIdxForUpload(cIdx);
+                                colorFileInputRef.current?.click();
+                              }}
+                              className="p-2 rounded bg-surface-2 border border-border hover:bg-surface text-text flex-shrink-0"
+                              title="Upload Photo for this color"
+                            >
+                              <Upload className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Remove Button */}
                       <button
                         type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="px-3 py-1.5 rounded bg-surface border border-border text-text hover:bg-surface-2 text-xs font-medium flex items-center gap-1.5"
+                        onClick={() => handleRemoveColorVariant(cIdx)}
+                        className="p-2 rounded-lg text-red-600 hover:bg-red-500/10 flex-shrink-0 self-end md:self-center"
+                        title="Delete this color"
                       >
-                        <Upload className="h-3.5 w-3.5" />
-                        <span>Upload from Computer</span>
+                        <Trash2 className="h-4 w-4" />
                       </button>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileUpload}
-                        className="hidden"
-                      />
                     </div>
-                  </div>
+                  ))}
                 </div>
 
-                {/* 1-Click Curated Presets */}
-                <div>
-                  <span className="text-[11px] text-muted block mb-1.5 font-medium">Or choose a curated atelier preset:</span>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {/* Hidden File Input for Color Images */}
+                <input
+                  ref={colorFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleColorImageUpload}
+                  className="hidden"
+                />
+
+                {/* Quick Presets helper for color photos */}
+                <div className="pt-1">
+                  <span className="text-[11px] text-muted block mb-1">
+                    Quick Photo Presets (Click to apply to Color #{activeColorIdxForUpload + 1}):
+                  </span>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                     {IMAGE_PRESETS.map((preset, idx) => (
                       <button
                         key={idx}
                         type="button"
-                        onClick={() => setFormImage(preset.url)}
-                        className={`p-1.5 rounded-lg border text-left flex items-center gap-2 transition-all ${
-                          formImage === preset.url
-                            ? "border-accent-ink bg-accent/20"
-                            : "border-border/60 hover:bg-surface"
-                        }`}
+                        onClick={() => handleUpdateColor(activeColorIdxForUpload, { image: preset.url })}
+                        className="p-1 rounded-lg border border-border/70 hover:border-accent-ink text-left flex flex-col items-center gap-1 transition-all"
                       >
-                        <img src={preset.url} alt="" className="h-8 w-8 rounded object-cover flex-shrink-0" />
-                        <span className="text-[10px] text-text line-clamp-1">{preset.name}</span>
+                        <img src={preset.url} alt="" className="h-10 w-full rounded object-cover" />
+                        <span className="text-[9px] text-muted truncate w-full text-center">{preset.name.split(" ")[0]}</span>
                       </button>
                     ))}
                   </div>
                 </div>
               </div>
 
-              {/* Color & Wash Configuration */}
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                <div>
-                  <label className="text-muted block mb-1">Color Name</label>
-                  <input
-                    type="text"
-                    value={formColorName}
-                    onChange={(e) => setFormColorName(e.target.value)}
-                    placeholder="e.g. Sage Olive"
-                    className="w-full p-2 rounded bg-bg border border-border text-text focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="text-muted block mb-1">Color Swatch Hex</label>
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="color"
-                      value={formColorHex}
-                      onChange={(e) => setFormColorHex(e.target.value)}
-                      className="h-8 w-8 p-0 rounded border border-border cursor-pointer"
-                    />
-                    <input
-                      type="text"
-                      value={formColorHex}
-                      onChange={(e) => setFormColorHex(e.target.value)}
-                      className="w-full p-2 rounded bg-bg border border-border text-text font-mono text-[11px] focus:outline-none"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-muted block mb-1">Wash Tint Hex</label>
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="color"
-                      value={formWashColor}
-                      onChange={(e) => setFormWashColor(e.target.value)}
-                      className="h-8 w-8 p-0 rounded border border-border cursor-pointer"
-                    />
-                    <input
-                      type="text"
-                      value={formWashColor}
-                      onChange={(e) => setFormWashColor(e.target.value)}
-                      className="w-full p-2 rounded bg-bg border border-border text-text font-mono text-[11px] focus:outline-none"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-muted block mb-1">Stock Count</label>
-                  <input
-                    type="number"
-                    value={formStockCount}
-                    onChange={(e) => setFormStockCount(Number(e.target.value))}
-                    className="w-full p-2 rounded bg-bg border border-border text-text font-mono focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Available Sizes */}
-              <div>
-                <label className="text-muted block mb-1.5 font-medium">Available Sizes:</label>
+              {/* Sizes Available */}
+              <div className="space-y-2 p-4 rounded-xl border border-border bg-surface-2/20">
+                <span className="font-semibold text-text uppercase tracking-wider text-[11px] block">
+                  3. Available Sizes
+                </span>
                 <div className="flex flex-wrap gap-2">
                   {AVAILABLE_SIZES.map((sz) => {
                     const isSelected = formSizes.includes(sz);
@@ -1852,7 +1960,7 @@ function AdminContent() {
                         }}
                         className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
                           isSelected
-                            ? "bg-accent-ink text-white border-accent-ink"
+                            ? "bg-accent-ink text-white border-accent-ink shadow-sm"
                             : "bg-surface text-muted border-border hover:border-text"
                         }`}
                       >
@@ -1864,13 +1972,13 @@ function AdminContent() {
               </div>
 
               {/* Description */}
-              <div>
-                <label className="text-muted block mb-1">Description &amp; Atelier Notes</label>
+              <div className="space-y-2">
+                <label className="text-muted block font-medium">Product Description</label>
                 <textarea
                   rows={3}
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
-                  placeholder="Crafted in Korean Nida crepe with seamless kimono cut..."
+                  placeholder="Describe the fabric feel, drape, sleeve cut, and occasion styling..."
                   className="w-full p-2.5 rounded-lg bg-bg border border-border text-text focus:outline-none"
                 />
               </div>
@@ -1886,9 +1994,9 @@ function AdminContent() {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 rounded-full bg-accent-ink text-white font-semibold text-xs uppercase tracking-wider hover:opacity-90 shadow-md"
+                  className="px-6 py-2.5 rounded-full bg-accent-ink text-white font-semibold text-xs uppercase tracking-wider hover:opacity-90 shadow-md"
                 >
-                  {editingProductId ? "Save Silhouette" : "Publish to Atelier"}
+                  {editingProductId ? "Save Product & Colors" : "Save and Publish Product"}
                 </button>
               </div>
             </form>
@@ -1904,8 +2012,8 @@ function AdminContent() {
           <div className="bg-surface border border-border rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between border-b border-border/30 pb-3">
               <div>
-                <h3 className="font-serif text-xl font-medium text-text">Create Phone / Bespoke Order</h3>
-                <p className="text-xs text-muted">Add manual order directly into the fulfillment queue.</p>
+                <h3 className="font-serif text-xl font-medium text-text">Create Phone / Custom Order</h3>
+                <p className="text-xs text-muted">Add customer order directly into delivery queue.</p>
               </div>
               <button onClick={() => setShowManualOrderModal(false)} className="text-muted hover:text-text">
                 <X className="h-5 w-5" />
@@ -1921,12 +2029,12 @@ function AdminContent() {
                     required
                     value={manualCustomer}
                     onChange={(e) => setManualCustomer(e.target.value)}
-                    placeholder="Client Name"
+                    placeholder="Customer Name"
                     className="w-full p-2 rounded bg-bg border border-border text-text focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="text-muted block mb-1">Phone Number *</label>
+                  <label className="text-muted block mb-1">Mobile Number *</label>
                   <input
                     type="tel"
                     required
@@ -1940,7 +2048,7 @@ function AdminContent() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-muted block mb-1">District *</label>
+                  <label className="text-muted block mb-1">Delivery District *</label>
                   <input
                     type="text"
                     required
@@ -1951,7 +2059,7 @@ function AdminContent() {
                   />
                 </div>
                 <div>
-                  <label className="text-muted block mb-1">Detailed Address</label>
+                  <label className="text-muted block mb-1">Full Street Address</label>
                   <input
                     type="text"
                     value={manualAddress}
@@ -1963,20 +2071,20 @@ function AdminContent() {
               </div>
 
               <div>
-                <label className="text-muted block mb-1">Garment Items *</label>
+                <label className="text-muted block mb-1">Items Ordered *</label>
                 <input
                   type="text"
                   required
                   value={manualItems}
                   onChange={(e) => setManualItems(e.target.value)}
-                  placeholder="e.g. Rawdah Abaya (Terracotta, 54) x1"
+                  placeholder="e.g. Rawdah Abaya (Sage Olive, 54) x1"
                   className="w-full p-2 rounded bg-bg border border-border text-text focus:outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="text-muted block mb-1">Total (BDT) *</label>
+                  <label className="text-muted block mb-1">Total (Taka) *</label>
                   <input
                     type="number"
                     required
@@ -2038,9 +2146,9 @@ function AdminContent() {
             <div className="flex items-center justify-between border-b border-border/30 pb-3">
               <div>
                 <h3 className="font-serif text-xl font-medium text-text">
-                  {editingArticleId ? "Edit Journal Essay" : "Compose Journal Article"}
+                  {editingArticleId ? "Edit Article" : "Write Blog Article"}
                 </h3>
-                <p className="text-xs text-muted">Publish to Nooré Editorial page.</p>
+                <p className="text-xs text-muted">Publish to website Journal page.</p>
               </div>
               <button onClick={() => setShowArticleModal(false)} className="text-muted hover:text-text">
                 <X className="h-5 w-5" />
@@ -2055,24 +2163,24 @@ function AdminContent() {
                   required
                   value={articleTitle}
                   onChange={(e) => setArticleTitle(e.target.value)}
-                  placeholder="The Architecture of Restraint..."
+                  placeholder="How to choose the perfect modest drape..."
                   className="w-full p-2 rounded bg-bg border border-border text-text focus:outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-muted block mb-1">Author</label>
+                  <label className="text-muted block mb-1">Author Name</label>
                   <input
                     type="text"
                     value={articleAuthor}
                     onChange={(e) => setArticleAuthor(e.target.value)}
-                    placeholder="Editorial Atelier"
+                    placeholder="Simply Nooré Editorial"
                     className="w-full p-2 rounded bg-bg border border-border text-text focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="text-muted block mb-1">Publication Date</label>
+                  <label className="text-muted block mb-1">Publish Date</label>
                   <input
                     type="text"
                     value={articleDate}
@@ -2084,7 +2192,7 @@ function AdminContent() {
               </div>
 
               <div>
-                <label className="text-muted block mb-1">Cover Image URL</label>
+                <label className="text-muted block mb-1">Cover Photo URL</label>
                 <input
                   type="url"
                   required
@@ -2096,13 +2204,13 @@ function AdminContent() {
               </div>
 
               <div>
-                <label className="text-muted block mb-1">Short Excerpt (Summary)</label>
+                <label className="text-muted block mb-1">Short Summary (Excerpt)</label>
                 <textarea
                   rows={2}
                   required
                   value={articleExcerpt}
                   onChange={(e) => setArticleExcerpt(e.target.value)}
-                  placeholder="Exploring the micro-twisted yarn geometry..."
+                  placeholder="Short introduction for article card..."
                   className="w-full p-2 rounded bg-bg border border-border text-text focus:outline-none"
                 />
               </div>
@@ -2113,7 +2221,7 @@ function AdminContent() {
                   rows={5}
                   value={articleContent}
                   onChange={(e) => setArticleContent(e.target.value)}
-                  placeholder="In our Dhaka atelier, the quest for the archetypal abaya begins..."
+                  placeholder="Write full story here..."
                   className="w-full p-2 rounded bg-bg border border-border text-text focus:outline-none"
                 />
               </div>
@@ -2145,7 +2253,7 @@ function AdminContent() {
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-surface border border-border rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between border-b border-border/30 pb-3">
-              <h3 className="font-serif text-lg font-medium text-text">Add Privilege Coupon</h3>
+              <h3 className="font-serif text-lg font-medium text-text">Add Discount Coupon</h3>
               <button onClick={() => setShowCouponModal(false)} className="text-muted hover:text-text">
                 <X className="h-5 w-5" />
               </button>
@@ -2181,7 +2289,7 @@ function AdminContent() {
                   type="text"
                   value={newCouponDesc}
                   onChange={(e) => setNewCouponDesc(e.target.value)}
-                  placeholder="e.g. 15% discount for Eid patrons"
+                  placeholder="e.g. 15% discount for Eid customers"
                   className="w-full p-2 rounded bg-bg border border-border text-text focus:outline-none"
                 />
               </div>
@@ -2216,7 +2324,7 @@ function AdminContent() {
                 <span className="font-serif text-2xl font-bold tracking-tight text-text">
                   Simply <em>Nooré</em>
                 </span>
-                <p className="text-[11px] text-muted">Dhaka Atelier Dispatch Consignment</p>
+                <p className="text-[11px] text-muted">Dhaka Customer Delivery Consignment</p>
               </div>
               <button onClick={() => setSelectedOrderForSlip(null)} className="text-muted hover:text-text">
                 <X className="h-5 w-5" />
@@ -2226,12 +2334,12 @@ function AdminContent() {
             <div className="space-y-4 text-xs">
               <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-surface-2/40 border border-border/40 font-mono">
                 <div>
-                  <span className="text-muted block text-[10px] uppercase">Order Ref</span>
+                  <span className="text-muted block text-[10px] uppercase">Order ID</span>
                   <strong className="text-sm text-text">{selectedOrderForSlip.id}</strong>
                 </div>
                 <div>
-                  <span className="text-muted block text-[10px] uppercase">Courier Status</span>
-                  <strong className="text-accent-ink">{selectedOrderForSlip.courier || "Steadfast Pending"}</strong>
+                  <span className="text-muted block text-[10px] uppercase">Steadfast Tracking</span>
+                  <strong className="text-accent-ink">{selectedOrderForSlip.courier || "Booking Pending"}</strong>
                 </div>
               </div>
 
@@ -2243,19 +2351,19 @@ function AdminContent() {
               </div>
 
               <div className="border-t border-b border-border/30 py-3">
-                <span className="text-muted block text-[10px] uppercase font-semibold mb-1">Enclosed Silhouettes</span>
+                <span className="text-muted block text-[10px] uppercase font-semibold mb-1">Items Enclosed</span>
                 <p className="font-medium text-text">{selectedOrderForSlip.items}</p>
               </div>
 
               <div className="flex justify-between items-baseline pt-1">
                 <div>
-                  <span className="text-muted block text-[10px] uppercase font-semibold">Payment Terms</span>
+                  <span className="text-muted block text-[10px] uppercase font-semibold">Payment Method</span>
                   <span className="font-semibold text-text">
                     {selectedOrderForSlip.payment === "COD" ? "Cash on Delivery" : `Advance Paid (${selectedOrderForSlip.payment})`}
                   </span>
                 </div>
                 <div className="text-right">
-                  <span className="text-muted block text-[10px] uppercase font-semibold">Payable to Courier</span>
+                  <span className="text-muted block text-[10px] uppercase font-semibold">Payable to Rider</span>
                   <span className="text-lg font-serif font-bold text-accent-ink">
                     {selectedOrderForSlip.payment === "COD" ? formatBDT(selectedOrderForSlip.total) : "৳0 (Fully Paid)"}
                   </span>
@@ -2289,7 +2397,7 @@ function AdminContent() {
 
 export default function AdminDashboardPage() {
   return (
-    <Suspense fallback={<div className="p-12 text-center text-xs text-muted">Loading Atelier Console...</div>}>
+    <Suspense fallback={<div className="p-12 text-center text-xs text-muted">Loading Store Dashboard...</div>}>
       <AdminContent />
     </Suspense>
   );
